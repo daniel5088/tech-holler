@@ -1,0 +1,57 @@
+import { z } from "zod";
+
+export const sourceSchema = z.object({
+  title: z.string().min(4),
+  publisher: z.string().min(2),
+  url: z.string().url(),
+  publishedAt: z.string(),
+  sourceType: z.enum(["primary", "top-tier", "specialist", "social-signal"]),
+});
+
+export const researchPacketSchema = z.object({
+  topic: z.string(),
+  thesis: z.string(),
+  category: z.enum([
+    "ai-robotics",
+    "computing-gadgets",
+    "cyber-internet",
+    "space-science",
+    "sci-fi-reality",
+    "futurecasting",
+  ]),
+  isForecast: z.boolean(),
+  forecastHorizon: z.string().nullable(),
+  confidence: z.enum(["low", "medium", "high"]),
+  claims: z.array(
+    z.object({
+      claim: z.string(),
+      evidenceUrls: z.array(z.string().url()).min(1),
+      agreement: z.enum(["confirmed", "mixed", "uncertain"]),
+    }),
+  ).min(3),
+  sources: z.array(sourceSchema).min(2),
+  disagreements: z.array(z.string()),
+  sourceSnippets: z.array(z.string()),
+});
+
+export const articleDraftSchema = z.object({
+  slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  title: z.string().min(20).max(130),
+  dek: z.string().min(40).max(260),
+  category: researchPacketSchema.shape.category,
+  confidence: z.enum(["low", "medium", "high"]),
+  forecastHorizon: z.string().nullable(),
+  heroImageAlt: z.string().min(20).max(180),
+  heroImagePrompt: z.string().min(30).max(700),
+  quickTake: z.array(z.string().min(12).max(180)).length(3),
+  sections: z.array(
+    z.object({
+      heading: z.string().min(4).max(100),
+      paragraphs: z.array(z.string().min(80).max(1600)).min(1).max(4),
+    }),
+  ).min(3).max(7),
+  sources: z.array(sourceSchema).min(2),
+});
+
+export type ResearchPacket = z.infer<typeof researchPacketSchema>;
+export type ArticleDraft = z.infer<typeof articleDraftSchema>;

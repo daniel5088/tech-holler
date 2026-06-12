@@ -1,0 +1,196 @@
+import { getServiceSupabase } from "@/lib/supabase";
+import type { Article, TrendCluster, TrendItem } from "@/types/content";
+import type { ResearchPacket } from "@/lib/pipeline/schemas";
+
+export async function persistTrendSweep(items: TrendItem[], clusters: TrendCluster[], errors: unknown[]) {
+  const supabase = getServiceSupabase();
+  if (!supabase) return { persisted: false, reason: "Supabase not configured" };
+
+  const { error } = await supabase.from("trend_sweeps").insert({
+    captured_at: new Date().toISOString(),
+    item_count: items.length,
+    channel_count: new Set(items.map((item) => item.channel)).size,
+    clusters,
+    adapter_errors: errors,
+  });
+  if (error) throw error;
+  return { persisted: true };
+}
+
+export async function uploadHeroImage(slug: string, base64: string) {
+  const supabase = getServiceSupabase();
+  if (!supabase) return null;
+  const path = `${new Date().getUTCFullYear()}/${slug}.webp`;
+  const bytes = Uint8Array.from(Buffer.from(base64, "base64"));
+  const { error } = await supabase.storage
+    .from("article-images")
+    .upload(path, bytes, { contentType: "image/webp", upsert: true });
+  if (error) throw error;
+  return supabase.storage.from("article-images").getPublicUrl(path).data.publicUrl;
+}
+
+export async function persistArticle(article: Article) {
+  const supabase = getServiceSupabase();
+  if (!supabase) throw new Error("Supabase must be configured to publish");
+
+  const { error } = await supabase.from("articles").insert({
+    id: article.id,
+    slug: article.slug,
+    title: article.title,
+    dek: article.dek,
+    category: article.category,
+    status: "published",
+    published_at: article.publishedAt,
+    updated_at: article.updatedAt,
+    reading_minutes: article.readingMinutes,
+    author: article.author,
+    confidence: article.confidence,
+    is_breaking: article.isBreaking,
+    trend_score: article.trendScore,
+    forecast_horizon: article.forecastHorizon,
+    hero_image_url: article.heroImageUrl,
+    hero_image_alt: article.heroImageAlt,
+    quick_take: article.quickTake,
+    sections: article.sections,
+    sources: article.sources,
+    revision_note: article.revisionNote,
+  });
+  if (error) throw error;
+
+  const { error: sourceError } = await supabase.from("article_sources").insert(
+    article.sources.map((source) => ({
+      article_id: article.id,
+      title: source.title,
+      publisher: source.publisher,
+      url: source.url,
+      source_type: source.sourceType,
+      published_at: source.publishedAt,
+    })),
+  );
+  if (sourceError) throw sourceError;
+
+  await supabase.from("article_revisions").insert({
+    article_id: article.id,
+    revision_number: 1,
+    reason: "Initial automated publication",
+    snapshot: article,
+  });
+}
+
+export async function updatePublishedArticle(article: Article) {
+  const supabase = getServiceSupabase();
+  if (!supabase) throw new Error("Supabase must be configured to update an article");
+
+  const { error } = await supabase
+    .from("articles")
+    .update({
+      title: article.title,
+      dek: article.dek,
+      category: article.category,
+      updated_at: article.updatedAt,
+      reading_minutes: article.readingMinutes,
+      confidence: article.confidence,
+      is_breaking: article.isBreaking,
+      trend_score: article.trendScore,
+      forecast_horizon: article.forecastHorizon,
+      hero_image_url: article.heroImageUrl,
+      hero_image_alt: article.heroImageAlt,
+      quick_take: article.quickTake,
+      sections: article.sections,
+      sources: article.sources,
+      revision_note: article.revisionNote,
+    })
+    .eq("id", article.id);
+  if (error) throw error;
+
+  const { error: deleteError } = await supabase
+    .from("article_sources")
+    .delete()
+    .eq("article_id", article.id);
+  if (deleteError) throw deleteError;
+
+  const { error: sourceError } = await supabase.from("article_sources").insert(
+    article.sources.map((source) => ({
+      article_id: article.id,
+      title: source.title,
+      publisher: source.publisher,
+      url: source.url,
+      source_type: source.sourceType,
+      published_at: source.publishedAt,
+    })),
+  );
+  if (sourceError) throw sourceError;
+
+  const { data: latestRevision, error: revisionLookupError } = await supabase
+    .from("article_revisions")
+    .select("revision_number")
+    .eq("article_id", article.id)
+    .order("revision_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (revisionLookupError) throw revisionLookupError;
+
+  const { error: revisionError } = await supabase.from("article_revisions").insert({
+    article_id: article.id,
+    revision_number: (latestRevision?.revision_number ?? 0) + 1,
+    reason: article.revisionNote ?? "Material automated update",
+    snapshot: article,
+  });
+  if (revisionError) throw revisionError;
+}
+
+export async function persistResearchPacket(
+  trendKey: string,
+  packet: ResearchPacket,
+  sourceGatePassed: boolean,
+) {
+  const supabase = getServiceSupabase();
+  if (!supabase) return;
+  const { error } = await supabase.from("research_packets").insert({
+    trend_key: trendKey,
+    packet,
+    source_gate_passed: sourceGatePassed,
+  });
+  if (error) throw error;
+}
+
+export async function recentPublishedHeadlines(limit = 100) {
+  const supabase = getServiceSupabase();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("published_articles")
+    .select("id,title,slug")
+    .order("published_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function recordJob(
+  jobType: string,
+  status: "completed" | "blocked" | "failed",
+  details: Record<string, unknown>,
+) {
+  const supabase = getServiceSupabase();
+  if (!supabase) return;
+  await supabase.from("job_runs").insert({
+    job_type: jobType,
+    status,
+    slot: typeof details.slot === "string" ? details.slot : null,
+    details,
+    finished_at: new Date().toISOString(),
+  });
+}
+
+export async function hasCompletedJobForSlot(jobType: string, slot: string) {
+  const supabase = getServiceSupabase();
+  if (!supabase) return false;
+  const { count, error } = await supabase
+    .from("job_runs")
+    .select("id", { count: "exact", head: true })
+    .eq("job_type", jobType)
+    .eq("status", "completed")
+    .eq("slot", slot);
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}

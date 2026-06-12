@@ -1,0 +1,35 @@
+import Link from "next/link";
+import { categories, SITE_DESCRIPTION, SITE_NAME } from "@/data/site";
+
+export function SiteFooter() {
+  return (
+    <footer className="site-footer">
+      <div className="shell footer-grid">
+        <div>
+          <div className="footer-brand">{SITE_NAME}</div>
+          <p>{SITE_DESCRIPTION}</p>
+          <p className="fine-print">
+            Reported facts stay factual. The drawl is just how we carry &apos;em.
+          </p>
+        </div>
+        <div>
+          <h2>Sections</h2>
+          {categories.map((category) => (
+            <Link href={`/category/${category.slug}`} key={category.slug}>
+              {category.name}
+            </Link>
+          ))}
+        </div>
+        <div>
+          <h2>About</h2>
+          <Link href="/methodology">Methodology & corrections</Link>
+          <Link href="/rss.xml">RSS feed</Link>
+          <Link href="/admin">Operations dashboard</Link>
+        </div>
+      </div>
+      <div className="shell copyright">
+        © {new Date().getFullYear()} {SITE_NAME}. Built for original reporting and transparent sourcing.
+      </div>
+    </footer>
+  );
+}
