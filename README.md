@@ -4,7 +4,7 @@ A production-oriented automated technology publication built with Next.js, Supab
 
 The app runs with demonstration stories when external services are not configured. Demo stories are visibly labeled and are not presented as current reporting.
 
-Static demonstration: https://daniel5088.github.io/tech-holler/
+Static demonstration: https://daniel5088.github.io/tech-holler-pages/
 
 ## Features
 
@@ -55,7 +55,9 @@ The production service role key and OpenAI key must only exist in server-side en
 
 ## GitHub Pages
 
-The workflow in `.github/workflows/pages.yml` deploys a static demonstration from `main`.
+The private source repository validates a static demonstration on every push. Because the
+current GitHub plan does not support Pages from private repositories, the generated site is
+published from the separate public `daniel5088/tech-holler-pages` artifact repository.
 GitHub Pages does not run the OpenAI, Supabase, cron, admin-session, or publishing
 endpoints. Those capabilities still require the production deployment described above.
 The Pages site contains labeled demonstration stories and a read-only operations view.

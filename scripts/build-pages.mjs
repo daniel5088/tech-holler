@@ -21,10 +21,10 @@ async function runBuild() {
           ...process.env,
           GITHUB_PAGES: "true",
           NEXT_PUBLIC_BASE_PATH:
-            process.env.NEXT_PUBLIC_BASE_PATH ?? "/tech-holler",
+            process.env.NEXT_PUBLIC_BASE_PATH ?? "/tech-holler-pages",
           NEXT_PUBLIC_SITE_URL:
             process.env.NEXT_PUBLIC_SITE_URL ??
-            "https://daniel5088.github.io/tech-holler",
+            "https://daniel5088.github.io/tech-holler-pages",
         },
         stdio: "inherit",
       },

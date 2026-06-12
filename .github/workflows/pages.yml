@@ -1,18 +1,9 @@
-name: Deploy GitHub Pages
+name: Validate GitHub Pages Export
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
   build:
@@ -23,24 +14,13 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - uses: actions/configure-pages@v5
       - run: npm ci
       - run: npm run check
       - run: npm run build:pages
         env:
-          NEXT_PUBLIC_BASE_PATH: /tech-holler
-          NEXT_PUBLIC_SITE_URL: https://daniel5088.github.io/tech-holler
-      - uses: actions/upload-pages-artifact@v3
+          NEXT_PUBLIC_BASE_PATH: /tech-holler-pages
+          NEXT_PUBLIC_SITE_URL: https://daniel5088.github.io/tech-holler-pages
+      - uses: actions/upload-artifact@v4
         with:
+          name: tech-holler-pages
           path: out
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
