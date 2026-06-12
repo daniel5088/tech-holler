@@ -10,7 +10,10 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  const query = (await searchParams).q?.trim() ?? "";
+  const query =
+    process.env.GITHUB_PAGES === "true"
+      ? ""
+      : (await searchParams).q?.trim() ?? "";
   const articles = query ? await getArticles({ query }) : [];
 
   return (
@@ -30,6 +33,12 @@ export default async function SearchPage({
         />
         <button type="submit">Search</button>
       </form>
+      {process.env.GITHUB_PAGES === "true" && (
+        <p className="pages-static-note">
+          Search is available in the full deployment. This GitHub Pages edition is a static
+          demonstration.
+        </p>
+      )}
       {query && (
         <div className="search-results">
           <p>

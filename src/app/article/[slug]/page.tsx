@@ -5,7 +5,7 @@ import { Clock, ExternalLink, RefreshCw, ShieldCheck } from "lucide-react";
 import { ArticleArt } from "@/components/article-art";
 import { getCategory, SITE_NAME } from "@/data/site";
 import { getArticleBySlug, getArticleSlugs } from "@/lib/content";
-import { siteUrl } from "@/lib/env";
+import { publicUrl, siteUrl } from "@/lib/env";
 import { formatDateTime } from "@/lib/format";
 
 export async function generateStaticParams() {
@@ -153,7 +153,11 @@ export default async function ArticlePage({
             <ol>
               {article.sources.map((source) => (
                 <li key={`${source.url}-${source.title}`}>
-                  <a href={source.url} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={publicUrl(source.url)}
+                    target={source.url.startsWith("/") ? undefined : "_blank"}
+                    rel={source.url.startsWith("/") ? undefined : "noopener noreferrer"}
+                  >
                     <span>{source.title}</span>
                     <small>
                       {source.publisher} · {source.sourceType.replace("-", " ")}

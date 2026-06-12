@@ -19,6 +19,7 @@
 
 # production
 /build
+/.pages-runtime-routes
 
 # misc
 .DS_Store

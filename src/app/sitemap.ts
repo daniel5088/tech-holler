@@ -3,6 +3,8 @@ import { categories } from "@/data/site";
 import { getArticles } from "@/lib/content";
 import { siteUrl } from "@/lib/env";
 
+export const dynamic = "force-static";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const articles = await getArticles();
   return [

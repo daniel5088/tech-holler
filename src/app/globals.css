@@ -1083,6 +1083,17 @@ input {
   margin-top: 55px;
 }
 
+.pages-static-note {
+  max-width: 780px;
+  margin-top: 20px;
+  padding: 13px 15px;
+  border-left: 4px solid var(--rust);
+  background: var(--paper-deep);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .search-results > p {
   margin-bottom: 30px;
   color: var(--muted);

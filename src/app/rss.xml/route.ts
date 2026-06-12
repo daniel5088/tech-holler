@@ -2,6 +2,8 @@ import { getArticles } from "@/lib/content";
 import { siteUrl } from "@/lib/env";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/data/site";
 
+export const dynamic = "force-static";
+
 function escapeXml(value: string) {
   return value.replace(/[<>&'"]/g, (character) => ({
     "<": "&lt;",
