@@ -28,13 +28,25 @@ export async function runPublishingJob({
   for (const cluster of candidates.slice(0, 3)) {
     try {
       const result = await produceArticle(cluster, type === "breaking");
-      results.push(result);
+      results.push({
+        candidate: {
+          key: cluster.key,
+          label: cluster.label,
+          selectionScore: cluster.selectionScore,
+        },
+        ...result,
+      });
       if (result.status === "published" || result.status === "updated") {
         publications += 1;
         if (publications >= publicationTarget) break;
       }
     } catch (error) {
       results.push({
+        candidate: {
+          key: cluster.key,
+          label: cluster.label,
+          selectionScore: cluster.selectionScore,
+        },
         status: "failed" as const,
         reason: error instanceof Error ? error.message : "Unknown publishing failure",
       });

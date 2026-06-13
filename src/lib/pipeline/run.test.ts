@@ -57,6 +57,9 @@ describe("publishing job candidate attempts", () => {
 
     expect(mocks.produceArticle).toHaveBeenCalledTimes(2);
     expect(result.results.map(({ status }) => status)).toEqual(["blocked", "published"]);
+    expect(result.results[0].candidate).toEqual(
+      expect.objectContaining({ key: "one", selectionScore: 110 }),
+    );
     expect(mocks.recordJob).toHaveBeenCalledWith(
       "daily",
       "completed",

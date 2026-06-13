@@ -13,6 +13,8 @@ const source = (url: string, sourceType: ArticleSource["sourceType"]): ArticleSo
 describe("source policy", () => {
   it("recognizes trusted domains and their subdomains", () => {
     expect(isTrustedDomain("https://www.reuters.com/technology/story")).toBe(true);
+    expect(isTrustedDomain("https://www.federalreserve.gov/newsevents/example.htm")).toBe(true);
+    expect(isTrustedDomain("https://www.washingtonpost.com/technology/example/")).toBe(true);
     expect(isTrustedDomain("https://random-blog.example/story")).toBe(false);
   });
 
