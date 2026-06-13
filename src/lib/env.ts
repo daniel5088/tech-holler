@@ -15,6 +15,7 @@ const envSchema = z.object({
   YOUTUBE_API_KEY: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   ADMIN_DASHBOARD_TOKEN: z.string().optional(),
+  MANUAL_PUBLISH_TOKEN: z.string().optional(),
   PUBLISHING_ENABLED: z.enum(["true", "false"]).default("false"),
   SOURCE_ALLOWLIST: z.string().optional(),
 });
@@ -32,6 +33,7 @@ export const env = envSchema.parse({
   YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
   CRON_SECRET: process.env.CRON_SECRET,
   ADMIN_DASHBOARD_TOKEN: process.env.ADMIN_DASHBOARD_TOKEN,
+  MANUAL_PUBLISH_TOKEN: process.env.MANUAL_PUBLISH_TOKEN,
   PUBLISHING_ENABLED: process.env.PUBLISHING_ENABLED,
   SOURCE_ALLOWLIST: process.env.SOURCE_ALLOWLIST,
 });
