@@ -4,6 +4,7 @@ import type { TrendCluster } from "@/types/content";
 const mocks = vi.hoisted(() => ({
   collectTrendSignals: vi.fn(),
   clusterTrends: vi.fn(),
+  selectPublishingCandidates: vi.fn(),
   persistTrendSweep: vi.fn(),
   produceArticle: vi.fn(),
   recordJob: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock("@/lib/pipeline/adapters", () => ({
 }));
 vi.mock("@/lib/pipeline/trend-scoring", () => ({
   clusterTrends: mocks.clusterTrends,
+  selectPublishingCandidates: mocks.selectPublishingCandidates,
 }));
 vi.mock("@/lib/pipeline/repository", () => ({
   persistTrendSweep: mocks.persistTrendSweep,
@@ -31,6 +33,9 @@ const cluster = (key: string): TrendCluster => ({
   items: [],
   score: 80,
   channels: 2,
+  factualSignals: 2,
+  hasGoogleNews: true,
+  selectionScore: 110,
   qualifiedForBreaking: true,
 });
 
@@ -38,7 +43,9 @@ describe("publishing job candidate attempts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.collectTrendSignals.mockResolvedValue({ items: [], errors: [] });
-    mocks.clusterTrends.mockReturnValue([cluster("one"), cluster("two"), cluster("three")]);
+    const clusters = [cluster("one"), cluster("two"), cluster("three")];
+    mocks.clusterTrends.mockReturnValue(clusters);
+    mocks.selectPublishingCandidates.mockReturnValue(clusters);
   });
 
   it("tries another candidate after a block and stops after reaching the target", async () => {

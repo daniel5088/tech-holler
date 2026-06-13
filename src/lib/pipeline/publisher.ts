@@ -9,6 +9,7 @@ import {
   updatePublishedArticle,
   uploadHeroImage,
 } from "@/lib/pipeline/repository";
+import { validateResearchPacket } from "@/lib/pipeline/research-policy";
 import { hasIndependentSources } from "@/lib/pipeline/source-policy";
 import type { Article, TrendCluster } from "@/types/content";
 
@@ -20,9 +21,17 @@ function readingTime(sections: { paragraphs: string[] }[]) {
 export async function produceArticle(cluster: TrendCluster, isBreaking: boolean) {
   const packet = await researchTrend(cluster);
   const sourceGate = hasIndependentSources(packet.sources);
-  await persistResearchPacket(cluster.key, packet, sourceGate.passes);
+  const researchGate = validateResearchPacket(packet);
+  await persistResearchPacket(cluster.key, packet, sourceGate.passes && researchGate.passes);
   if (!sourceGate.passes) {
     return { status: "blocked" as const, reason: "Independent source gate failed", sourceGate };
+  }
+  if (!researchGate.passes) {
+    return {
+      status: "blocked" as const,
+      reason: "Research evidence mapping failed",
+      researchGate,
+    };
   }
   if (packet.claims.some((claim) => claim.agreement === "uncertain")) {
     return { status: "blocked" as const, reason: "Research contains uncertain factual claims" };

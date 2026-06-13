@@ -1,7 +1,7 @@
 import { collectTrendSignals } from "@/lib/pipeline/adapters";
 import { produceArticle } from "@/lib/pipeline/publisher";
 import { persistTrendSweep, recordJob } from "@/lib/pipeline/repository";
-import { clusterTrends } from "@/lib/pipeline/trend-scoring";
+import { clusterTrends, selectPublishingCandidates } from "@/lib/pipeline/trend-scoring";
 
 export async function runTrendSweep() {
   const { items, errors } = await collectTrendSignals();
@@ -20,9 +20,7 @@ export async function runPublishingJob({
   slot?: string;
 }) {
   const sweep = await runTrendSweep();
-  const candidates = sweep.clusters.filter((cluster) =>
-    type === "breaking" ? cluster.qualifiedForBreaking : cluster.score >= 55,
-  );
+  const candidates = selectPublishingCandidates(sweep.clusters, type);
   const results = [];
   const publicationTarget = Math.max(1, Math.min(count, 3));
   let publications = 0;

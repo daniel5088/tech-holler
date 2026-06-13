@@ -70,5 +70,8 @@ export interface TrendCluster {
   items: TrendItem[];
   score: number;
   channels: number;
+  factualSignals: number;
+  hasGoogleNews: boolean;
+  selectionScore: number;
   qualifiedForBreaking: boolean;
 }
