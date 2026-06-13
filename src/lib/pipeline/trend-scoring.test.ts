@@ -128,4 +128,19 @@ describe("trend scoring", () => {
       ),
     ).toBeLessThan(0);
   });
+
+  it("rejects a single academic-paper headline without a concrete development", () => {
+    const candidates = selectPublishingCandidates(
+      clusterTrends([
+        item({
+          channel: "google-news",
+          title:
+            "Bridging three-dimensional molecular structures and artificial intelligence with a conformation description language - Nature",
+        }),
+      ]),
+      "daily",
+    );
+
+    expect(candidates).toHaveLength(0);
+  });
 });

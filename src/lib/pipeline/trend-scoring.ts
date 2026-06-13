@@ -51,9 +51,13 @@ function looksLikeSpecificNews(title: string) {
   return tokens.length >= 5 && tokens.length <= 24 && specificTokens.length >= 3;
 }
 
+function looksLikeConcreteDevelopment(title: string) {
+  return CONCRETE_DEVELOPMENT.test(title);
+}
+
 export function editorialNewsworthiness(title: string) {
   let score = 0;
-  if (CONCRETE_DEVELOPMENT.test(title)) score += 18;
+  if (looksLikeConcreteDevelopment(title)) score += 18;
   if (TRUSTED_PUBLISHER_HINT.test(title)) score += 14;
   if (LOW_NEWS_VALUE.test(title)) score -= 24;
   if (PROMOTIONAL_LANGUAGE.test(title)) score -= 18;
@@ -160,7 +164,12 @@ export function selectPublishingCandidates(
       return (
         cluster.score >= 55 &&
         cluster.factualSignals >= 1 &&
-        cluster.selectionScore >= 65
+        cluster.selectionScore >= 65 &&
+        (
+          looksLikeConcreteDevelopment(cluster.label) ||
+          cluster.channels >= 2 ||
+          cluster.factualSignals >= 2
+        )
       );
     })
     .sort((left, right) => right.selectionScore - left.selectionScore);

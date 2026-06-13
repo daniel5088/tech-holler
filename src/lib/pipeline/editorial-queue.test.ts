@@ -56,7 +56,7 @@ vi.mock("@/lib/pipeline/research-policy", () => ({
   validateTalkAroundTownPacket: mocks.validateTalkAroundTownPacket,
 }));
 
-import { generateEditorialDraft } from "./editorial-queue";
+import { generateEditorialDraft, normalizeDraftCompleteness } from "./editorial-queue";
 
 const candidate: TrendCluster = {
   key: "specific-event",
@@ -122,9 +122,9 @@ const draft: ArticleDraft = {
     "Some implementation details remain unknown.",
   ],
   sections: [
-    { heading: "What happened", paragraphs: ["A".repeat(100)] },
-    { heading: "What is known", paragraphs: ["B".repeat(100)] },
-    { heading: "What comes next", paragraphs: ["C".repeat(100)] },
+    { heading: "What happened", paragraphs: [`${"A".repeat(100)}.`] },
+    { heading: "What is known", paragraphs: [`${"B".repeat(100)}.`] },
+    { heading: "What comes next", paragraphs: [`${"C".repeat(100)}.`] },
   ],
   sources: packet.sources,
 };
@@ -185,5 +185,21 @@ describe("editorial queue cost ceiling", () => {
         usage: expect.objectContaining({ calls: 3, totalTokens: 1510 }),
       }),
     );
+  });
+
+  it("removes only an incomplete trailing fragment when a complete sentence remains", () => {
+    const normalized = normalizeDraftCompleteness({
+      ...draft,
+      dek: `${draft.dek} This fragment trails off without`,
+      sections: draft.sections.map((section, index) => ({
+        ...section,
+        paragraphs: index === 0
+          ? [`${section.paragraphs[0]} This fragment also trails off without`]
+          : section.paragraphs,
+      })),
+    });
+
+    expect(normalized?.dek).toBe(draft.dek);
+    expect(normalized?.sections[0].paragraphs[0]).toBe(draft.sections[0].paragraphs[0]);
   });
 });

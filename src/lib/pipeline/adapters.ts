@@ -55,8 +55,11 @@ async function googleTrends(): Promise<TrendItem[]> {
 }
 
 async function googleNews(): Promise<TrendItem[]> {
+  const query =
+    '(technology OR "artificial intelligence" OR robotics OR space) ' +
+    "(announces OR launches OR releases OR unveils OR update OR outage OR breach OR regulation) when:2d";
   const feed = await fetchRss(
-    "https://news.google.com/rss/search?q=technology+OR+artificial+intelligence+OR+space&hl=en-US&gl=US&ceid=US:en",
+    `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`,
   );
   return rssItems(feed, "google-news", 60);
 }

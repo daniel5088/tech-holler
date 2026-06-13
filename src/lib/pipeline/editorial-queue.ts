@@ -23,6 +23,7 @@ import { hasIndependentSources } from "@/lib/pipeline/source-policy";
 import { collectTrendSignals } from "@/lib/pipeline/adapters";
 import { clusterTrends, selectPublishingCandidates } from "@/lib/pipeline/trend-scoring";
 import type { ResearchPacket } from "@/lib/pipeline/schemas";
+import type { ArticleDraft } from "@/lib/pipeline/schemas";
 import type { Article } from "@/types/content";
 
 type UsageRecord = TokenUsage & {
@@ -33,6 +34,37 @@ type UsageRecord = TokenUsage & {
 function readingTime(sections: { paragraphs: string[] }[]) {
   const words = sections.flatMap((section) => section.paragraphs).join(" ").split(/\s+/).length;
   return Math.max(3, Math.ceil(words / 220));
+}
+
+function completeSentencePrefix(value: string, minimumLength: number) {
+  const trimmed = value.trim();
+  if (/[.!?]["')\]]?$/.test(trimmed)) return trimmed;
+
+  const terminalMarks = [...trimmed.matchAll(/[.!?](?=\s|$)/g)];
+  const lastMark = terminalMarks.at(-1);
+  if (lastMark?.index === undefined) return null;
+
+  const completePrefix = trimmed.slice(0, lastMark.index + 1).trim();
+  return completePrefix.length >= minimumLength ? completePrefix : null;
+}
+
+export function normalizeDraftCompleteness(draft: ArticleDraft) {
+  const dek = completeSentencePrefix(draft.dek, 40);
+  const sections = draft.sections.map((section) => ({
+    ...section,
+    paragraphs: section.paragraphs.map((paragraph) => completeSentencePrefix(paragraph, 80)),
+  }));
+  if (!dek || sections.some((section) => section.paragraphs.some((paragraph) => !paragraph))) {
+    return null;
+  }
+  return {
+    ...draft,
+    dek,
+    sections: sections.map((section) => ({
+      ...section,
+      paragraphs: section.paragraphs as string[],
+    })),
+  };
 }
 
 export async function generateEditorialDraft(options: { slot?: string } = {}) {
@@ -109,11 +141,18 @@ export async function generateEditorialDraft(options: { slot?: string } = {}) {
       });
     }
 
-    const draft = await writeArticle(effectivePacket, false, undefined, {
+    const rawDraft = await writeArticle(effectivePacket, false, undefined, {
       model,
       maxOutputTokens: env.EDITORIAL_MAX_OUTPUT_TOKENS,
       onUsage: addUsage("draft"),
     });
+    const draft = normalizeDraftCompleteness(rawDraft);
+    if (!draft) {
+      return finish("blocked", {
+        reason: "Draft contains an incomplete dek or paragraph",
+        candidate: { key: candidate.key, label: candidate.label },
+      });
+    }
     const talkLabelInvalid =
       editorialMode === "talk-around-town" &&
       (!draft.title.startsWith("Talk Around Town:") || draft.confidence !== "low");

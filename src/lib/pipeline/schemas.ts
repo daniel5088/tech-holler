@@ -68,7 +68,7 @@ export const articleDraftSchema = z.object({
       paragraphs: z.array(z.string().min(80).max(1600)).min(1).max(4),
     }),
   ).min(3).max(7),
-  sources: z.array(sourceSchema).min(2),
+  sources: z.array(sourceSchema).min(1),
 });
 
 export type ResearchPacket = z.infer<typeof researchPacketSchema>;
