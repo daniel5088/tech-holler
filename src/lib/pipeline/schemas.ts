@@ -35,7 +35,9 @@ export const researchPacketSchema = z.object({
     z.object({
       claim: z.string(),
       evidenceUrls: z.array(urlSchema).min(1),
-      agreement: z.enum(["confirmed", "mixed", "uncertain"]),
+      agreement: z.enum(["confirmed", "mixed", "uncertain"]).describe(
+        "Use confirmed for a directly evidenced fact, including the fact that a named source made an explicitly attributed statement. This does not confirm the underlying allegation. Use uncertain only when the claim itself lacks adequate support.",
+      ),
     }),
   ).min(3),
   sources: z.array(sourceSchema).min(2),
