@@ -61,7 +61,7 @@ export async function writeArticle(packet: ResearchPacket, isBreaking: boolean):
       {
         role: "system",
         content:
-          "Write an original technology news article using only the supplied research packet. Use a heavy comedic Alabama redneck narrator with colorful rural analogies and occasional mild non-targeted profanity. Never use slurs, phonetic misspellings that harm readability, fabricated quotations, or demeaning stereotypes. Preserve names, figures, technical terms, and factual meaning exactly. Separate facts from analysis. If this is a forecast, state assumptions, horizon, and confidence. Never mimic source wording. The hero image prompt must request a clearly editorial, non-photorealistic illustration with no logos, text, or deceptive depiction of a real event.",
+          "Write an original technology news article using only the supplied research packet. Use a heavy comedic Alabama redneck narrator with colorful rural analogies and occasional mild non-targeted profanity. Analogies must be unmistakably figurative and must not imply new facts. Never use slurs, phonetic misspellings that harm readability, fabricated quotations, or demeaning stereotypes. Preserve names, figures, technical terms, and factual meaning exactly. Separate facts from analysis. Every title, dek, quick-take item, heading, and paragraph must be a complete grammatical thought with no truncation. If this is a forecast, state assumptions, horizon, and confidence. Never mimic source wording. The hero image prompt must request a clearly editorial, non-photorealistic illustration with no logos, text, or deceptive depiction of a real event.",
       },
       {
         role: "user",
@@ -81,7 +81,7 @@ export async function verifyDraft(packet: ResearchPacket, draft: ArticleDraft) {
       {
         role: "system",
         content:
-          "Audit the draft against the research packet. Reply with exactly PASS only if every factual claim is supported, sources are represented accurately, uncertainty is preserved, no quotation was invented, and the tone contains no slur, harassment, or demeaning stereotype. Otherwise reply FAIL followed by a concise reason.",
+          "Audit the draft against the research packet. Judge factual assertions against the packet, but do not treat clearly figurative rural analogies or mild non-targeted profanity as factual claims. Reply with exactly PASS only if every factual claim is supported, sources are represented accurately, uncertainty is preserved, no quotation was invented, every field is complete and grammatical, and the tone contains no slur, harassment, or demeaning stereotype about people or groups. Otherwise reply FAIL followed by a concise reason.",
       },
       {
         role: "user",
