@@ -29,6 +29,9 @@ export function ArticleCard({
       <div className="card-copy">
         <div className="story-meta">
           {article.isBreaking && <span className="breaking-chip">Breaking</span>}
+          {article.editorialMode === "talk-around-town" && (
+            <span className="talk-chip">Talk Around Town</span>
+          )}
           <span style={{ color: category?.accent }}>{category?.name}</span>
           <span>{formatDate(article.publishedAt)}</span>
           <span>{article.readingMinutes} min</span>

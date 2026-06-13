@@ -81,9 +81,10 @@ Supabase Cron calls the trend and breaking endpoints every 30 minutes. It calls 
 
 ## Editorial Rules
 
-- Social and forum activity is a discovery signal, never factual confirmation.
+- Social, forum, opinion, and single-source activity may support a clearly labeled Talk Around Town analysis, but never becomes confirmed fact merely because it is linked.
 - Breaking stories require at least two independent trusted domains and one primary or top-tier source.
-- Uncertain claims, materially conflicting evidence, missing citations, failed moderation, copied phrasing, or equivalent existing coverage block publication.
+- Ordinary reported stories still require independent confirmation. Uncertain or disputed claims may publish only in Talk Around Town mode with explicit attribution, a visible uncertainty note, and analysis separated from known facts.
+- Missing attribution, fabricated claims, failed moderation, copied phrasing, or equivalent existing coverage block publication in every mode.
 - Forecasts must state a horizon, assumptions, and confidence.
 - The narrator may use heavy dialect comedy and mild non-targeted profanity. Slurs, harassment, fabricated quotations, and demeaning stereotypes are prohibited.
 - Generated artwork must be editorial and non-photorealistic, with no logos, text, or deceptive depiction of an actual event.

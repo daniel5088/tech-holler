@@ -10,12 +10,12 @@ const principles = [
   {
     icon: ScanSearch,
     title: "Signals ain't facts",
-    body: "Google Trends, social networks, forums, and aggregators tell us what people are noticing. They never count as confirmation by themselves.",
+    body: "Google Trends, social networks, forums, and aggregators tell us what people are noticing. When they are not confirmed, they can appear only as clearly labeled Talk Around Town.",
   },
   {
     icon: BookOpenCheck,
-    title: "Two independent receipts",
-    body: "Breaking coverage requires two independent trustworthy sources, including at least one primary source or top-tier newsroom.",
+    title: "Two different hats",
+    body: "Verified reporting still needs independent trustworthy sourcing. Chatter and single-source claims wear a prominent Talk Around Town label instead.",
   },
   {
     icon: Scale,
@@ -57,6 +57,15 @@ export default function MethodologyPage() {
             must then be confirmed by two independent trusted sources, one of which is primary or
             top-tier. Conflicting evidence, missing citations, or a near-duplicate story blocks
             publication.
+          </p>
+        </section>
+        <section>
+          <h2>Talk Around Town</h2>
+          <p>
+            A technology claim can be worth discussing before it is fully verified. Those pieces
+            identify who is making the claim, explain the source&apos;s limitations, separate known
+            facts from open questions, and label our own thoughts as analysis. A source link proves
+            attribution, not truth.
           </p>
         </section>
         <section>

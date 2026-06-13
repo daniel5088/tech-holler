@@ -20,6 +20,9 @@ export const sourceSchema = z.object({
 export const researchPacketSchema = z.object({
   topic: z.string(),
   thesis: z.string(),
+  editorialMode: z.enum(["reported", "talk-around-town"]),
+  sourceAssessment: z.string().min(30).max(600),
+  uncertaintyNote: z.string().min(30).max(500),
   category: z.enum([
     "ai-robotics",
     "computing-gadgets",
@@ -39,10 +42,10 @@ export const researchPacketSchema = z.object({
         "Use confirmed for a directly evidenced fact, including the fact that a named source made an explicitly attributed statement. This does not confirm the underlying allegation. Use uncertain only when the claim itself lacks adequate support.",
       ),
     }),
-  ).min(3),
-  sources: z.array(sourceSchema).min(2),
+  ).min(2),
+  sources: z.array(sourceSchema).min(1),
   disagreements: z.array(z.string()),
-  sourceSnippets: z.array(z.string().min(40).max(300)).min(2).max(8).describe(
+  sourceSnippets: z.array(z.string().min(40).max(300)).min(1).max(8).describe(
     "Short verbatim excerpts of roughly 12 to 24 words copied exactly from the factual sources, used only to detect source-phrase reuse. Never put summaries or paraphrases here.",
   ),
 });
@@ -51,6 +54,8 @@ export const articleDraftSchema = z.object({
   slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   title: z.string().min(20).max(130),
   dek: z.string().min(40).max(260),
+  editorialMode: researchPacketSchema.shape.editorialMode,
+  uncertaintyNote: z.string().min(30).max(500),
   category: researchPacketSchema.shape.category,
   confidence: z.enum(["low", "medium", "high"]),
   forecastHorizon: z.string().nullable(),

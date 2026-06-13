@@ -303,6 +303,13 @@ input {
   color: white;
 }
 
+.talk-chip {
+  padding: 4px 6px;
+  border: 1px solid #8a651d;
+  background: #fff0bd;
+  color: #5f491f;
+}
+
 .primary-button,
 .outline-button {
   display: inline-flex;
@@ -756,6 +763,31 @@ input {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.talk-story-note {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  justify-content: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid #d4ad55;
+  background: #fff0bd;
+  color: #4d3a16;
+  text-align: center;
+}
+
+.talk-story-note strong {
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.talk-story-note span {
+  max-width: 900px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .article-header {

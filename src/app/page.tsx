@@ -33,6 +33,9 @@ export default async function Home() {
         <div className="hero-grid">
           <div className="hero-copy">
             <div className="story-meta">
+              {lead.editorialMode === "talk-around-town" && (
+                <span className="talk-chip">Talk Around Town</span>
+              )}
               <span style={{ color: leadCategory?.accent }}>{leadCategory?.name}</span>
               <span>Updated {formatDateTime(lead.updatedAt)}</span>
             </div>
@@ -44,7 +47,11 @@ export default async function Home() {
             <div className="hero-facts">
               <div>
                 <strong>{lead.confidence}</strong>
-                <span>confidence</span>
+                <span>
+                  {lead.editorialMode === "talk-around-town"
+                    ? "source confidence"
+                    : "confidence"}
+                </span>
               </div>
               <div>
                 <strong>{lead.sources.length}</strong>
@@ -81,8 +88,8 @@ export default async function Home() {
           <div>
             <ShieldCheck aria-hidden="true" />
             <span>
-              <strong>Two-source gate</strong>
-              No breaking story without independent confirmation
+              <strong>Clear source labels</strong>
+              Verified reporting and town talk never wear the same hat
             </span>
           </div>
           <div>

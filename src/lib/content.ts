@@ -24,7 +24,10 @@ type ArticleRow = {
   revision_note: string | null;
 };
 
+const TALK_AROUND_TOWN_PREFIX = "Talk Around Town: ";
+
 function mapArticle(row: ArticleRow): Article {
+  const isTalkAroundTown = row.revision_note?.startsWith(TALK_AROUND_TOWN_PREFIX) ?? false;
   return {
     id: row.id,
     slug: row.slug,
@@ -36,6 +39,10 @@ function mapArticle(row: ArticleRow): Article {
     readingMinutes: row.reading_minutes,
     author: row.author,
     confidence: row.confidence,
+    editorialMode: isTalkAroundTown ? "talk-around-town" : "reported",
+    uncertaintyNote: isTalkAroundTown
+      ? row.revision_note?.slice(TALK_AROUND_TOWN_PREFIX.length)
+      : undefined,
     isBreaking: row.is_breaking,
     trendScore: row.trend_score,
     forecastHorizon: row.forecast_horizon ?? undefined,

@@ -52,6 +52,9 @@ import { produceArticle } from "./publisher";
 const packet: ResearchPacket = {
   topic: "Specific event",
   thesis: "Two trusted sources confirm a specific event.",
+  editorialMode: "reported",
+  sourceAssessment: "A primary source and an independent report support the central event.",
+  uncertaintyNote: "Some implementation details remain unknown, but the central event is supported.",
   category: "ai-robotics",
   isForecast: false,
   forecastHorizon: null,
@@ -97,6 +100,8 @@ const draft: ArticleDraft = {
   slug: "specific-event",
   title: "A Specific Technology Event Has Reached the United States",
   dek: "Two independent sources describe a concrete technology development with immediate relevance.",
+  editorialMode: "reported",
+  uncertaintyNote: "Some implementation details remain unknown, but the central event is supported.",
   category: "ai-robotics",
   confidence: "high",
   forecastHorizon: null,
@@ -168,5 +173,64 @@ describe("article draft repair", () => {
     expect(result.status).toBe("published");
     expect(mocks.writeArticle).toHaveBeenCalledTimes(2);
     expect(mocks.writeArticle.mock.calls[1][2]).toContain("quick take is incomplete");
+  });
+
+  it("publishes single-source uncertainty as Talk Around Town", async () => {
+    const talkPacket: ResearchPacket = {
+      ...packet,
+      editorialMode: "talk-around-town",
+      confidence: "low",
+      sourceAssessment: "Only one community source discusses the claim, with no independent confirmation.",
+      uncertaintyNote: "The central claim is unverified and could be incomplete, mistaken, or promotional.",
+      claims: [
+        {
+          claim: "A community post claims a prototype is being tested.",
+          evidenceUrls: ["https://community.example/prototype"],
+          agreement: "uncertain",
+        },
+        {
+          claim: "The post provides no independent test data.",
+          evidenceUrls: ["https://community.example/prototype"],
+          agreement: "confirmed",
+        },
+      ],
+      sources: [{
+        title: "Prototype discussion",
+        publisher: "Community forum",
+        url: "https://community.example/prototype",
+        publishedAt: "2026-06-13T00:00:00Z",
+        sourceType: "social-signal",
+      }],
+      sourceSnippets: [
+        "A prototype may be undergoing limited testing, according to a post shared by one community member yesterday.",
+      ],
+    };
+    const talkDraft: ArticleDraft = {
+      ...draft,
+      title: "Talk Around Town: Is a New Prototype Quietly Being Tested?",
+      editorialMode: "talk-around-town",
+      confidence: "low",
+      uncertaintyNote: talkPacket.uncertaintyNote,
+      sources: talkPacket.sources,
+    };
+    mocks.researchTrend.mockResolvedValue(talkPacket);
+    mocks.writeArticle.mockResolvedValue(talkDraft);
+    mocks.hasIndependentSources.mockReturnValue({
+      passes: false,
+      independentDomains: 0,
+      hasAuthoritativeSource: false,
+    });
+    mocks.hasSuspiciousPhraseReuse.mockReturnValue(false);
+
+    const result = await produceArticle(cluster, false);
+
+    expect(result.status).toBe("published");
+    expect(mocks.persistArticle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        editorialMode: "talk-around-town",
+        confidence: "low",
+        revisionNote: expect.stringContaining("Talk Around Town:"),
+      }),
+    );
   });
 });

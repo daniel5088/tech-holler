@@ -24,6 +24,9 @@ export async function GET() {
       <guid isPermaLink="true">${siteUrl}/article/${article.slug}</guid>
       <pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate>
       <category>${escapeXml(article.category)}</category>
+      ${article.editorialMode === "talk-around-town"
+        ? "<category>Talk Around Town</category>"
+        : ""}
     </item>`).join("");
 
   const xml = `<?xml version="1.0" encoding="UTF-8" ?>

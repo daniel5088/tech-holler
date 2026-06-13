@@ -44,9 +44,10 @@ export default async function ArticlePage({
   if (!article) notFound();
 
   const category = getCategory(article.category);
+  const isTalkAroundTown = article.editorialMode === "talk-around-town";
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "NewsArticle",
+    "@type": isTalkAroundTown ? "Article" : "NewsArticle",
     headline: article.title,
     description: article.dek,
     datePublished: article.publishedAt,
@@ -68,9 +69,19 @@ export default async function ArticlePage({
           Demonstration story: this sample shows the article template and is not current reporting.
         </div>
       )}
+      {isTalkAroundTown && (
+        <div className="talk-story-note">
+          <strong>Talk Around Town</strong>
+          <span>
+            This is attributed chatter and analysis, not fully verified reporting.{" "}
+            {article.uncertaintyNote}
+          </span>
+        </div>
+      )}
       <header className="article-header shell">
         <div className="story-meta">
           {article.isBreaking && <span className="breaking-chip">Breaking</span>}
+          {isTalkAroundTown && <span className="talk-chip">Talk Around Town</span>}
           <Link href={`/category/${article.category}`} style={{ color: category?.accent }}>
             {category?.name}
           </Link>
@@ -107,7 +118,11 @@ export default async function ArticlePage({
             <div className={`confidence-meter ${article.confidence}`}>
               <i />
             </div>
-            <small>Based on source quality and agreement</small>
+            <small>
+              {isTalkAroundTown
+                ? "Low means the chatter is not independently confirmed"
+                : "Based on source quality and agreement"}
+            </small>
           </div>
           <div className="article-stat">
             <Clock size={17} />
@@ -145,10 +160,11 @@ export default async function ArticlePage({
           ))}
 
           <section className="sources-section">
-            <h2>Receipts on the tailgate</h2>
+            <h2>{isTalkAroundTown ? "Who is doing the hollering" : "Receipts on the tailgate"}</h2>
             <p>
-              Social posts can point us toward a story, but they do not establish facts. These
-              are the sources used for the published claims.
+              {isTalkAroundTown
+                ? "These links show where the chatter came from. A link is attribution, not our endorsement or independent confirmation."
+                : "Social posts can point us toward a story, but they do not establish facts. These are the sources used for the published claims."}
             </p>
             <ol>
               {article.sources.map((source) => (

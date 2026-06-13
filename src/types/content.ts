@@ -7,6 +7,7 @@ export type CategorySlug =
   | "futurecasting";
 
 export type Confidence = "low" | "medium" | "high";
+export type EditorialMode = "reported" | "talk-around-town";
 
 export interface Category {
   slug: CategorySlug;
@@ -40,6 +41,8 @@ export interface Article {
   readingMinutes: number;
   author: string;
   confidence: Confidence;
+  editorialMode?: EditorialMode;
+  uncertaintyNote?: string;
   isBreaking: boolean;
   isDemo?: boolean;
   trendScore: number;
