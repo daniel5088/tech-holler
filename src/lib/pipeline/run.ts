@@ -24,10 +24,17 @@ export async function runPublishingJob({
     type === "breaking" ? cluster.qualifiedForBreaking : cluster.score >= 55,
   );
   const results = [];
+  const publicationTarget = Math.max(1, Math.min(count, 3));
+  let publications = 0;
 
-  for (const cluster of candidates.slice(0, Math.max(1, Math.min(count, 3)))) {
+  for (const cluster of candidates.slice(0, 3)) {
     try {
-      results.push(await produceArticle(cluster, type === "breaking"));
+      const result = await produceArticle(cluster, type === "breaking");
+      results.push(result);
+      if (result.status === "published" || result.status === "updated") {
+        publications += 1;
+        if (publications >= publicationTarget) break;
+      }
     } catch (error) {
       results.push({
         status: "failed" as const,
@@ -45,6 +52,8 @@ export async function runPublishingJob({
     slot,
     signalCount: sweep.items.length,
     candidateCount: candidates.length,
+    attemptedCandidates: results.length,
+    publicationTarget,
     results,
     adapterErrors: sweep.errors,
   });
