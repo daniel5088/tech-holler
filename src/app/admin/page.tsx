@@ -3,6 +3,7 @@ import { Activity, Database, KeyRound, Radio, ShieldAlert } from "lucide-react";
 import { env, publishingEnabled, supabaseConfigured } from "@/lib/env";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { getEditorialDrafts, recentEditorialJobs } from "@/lib/pipeline/repository";
+import { CuratedEditor } from "@/components/admin/curated-editor";
 
 export const metadata: Metadata = { title: "Operations dashboard", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -74,22 +75,37 @@ export default async function AdminPage({
         </section>
       </div>
 
+      <section className="admin-panel curated-editor-panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Write a curated article</h2>
+            <p>Editor-written copy, zero generative calls, full safety checks, and private review before publication.</p>
+          </div>
+          <span>Preferred workflow</span>
+        </div>
+        <CuratedEditor />
+      </section>
+
       <section className="admin-panel editorial-controls">
         <div className="panel-heading">
           <div>
-            <h2>Generate one private draft</h2>
-            <p>One candidate, three text calls maximum, no image generation, no automatic publishing.</p>
+            <h2>AI draft generation</h2>
+            <p>Disabled while the spending switch is paused. Curated drafts above remain available.</p>
           </div>
-          <span>{env.OPENAI_EDITORIAL_MODEL}</span>
+          <span>{publishingEnabled ? env.OPENAI_EDITORIAL_MODEL : "Disabled"}</span>
         </div>
         {queueResult && (
           <p className={`queue-result ${queueResult}`}>
             Latest generation result: {queueResult}
           </p>
         )}
-        <form action="/api/admin/editorial-drafts/generate" method="post">
-          <button type="submit">Generate one draft</button>
-        </form>
+        {publishingEnabled ? (
+          <form action="/api/admin/editorial-drafts/generate" method="post">
+            <button type="submit">Generate one AI draft</button>
+          </form>
+        ) : (
+          <button type="button" disabled>Generate one AI draft</button>
+        )}
       </section>
 
       <section className="admin-panel">
@@ -151,7 +167,7 @@ export default async function AdminPage({
 
       <section className="admin-panel">
         <div className="panel-heading">
-          <h2>Recent draft-generation usage</h2>
+          <h2>Recent editorial usage</h2>
           <span>Token counts, not price estimates</span>
         </div>
         <div className="editorial-job-list">
@@ -165,7 +181,7 @@ export default async function AdminPage({
             return (
               <div key={`${job.finished_at}-${index}`}>
                 <strong>{job.status}</strong>
-                <span>{details.model ?? "unknown model"}</span>
+                <span>{job.job_type === "curated-draft" ? "Human curated" : details.model ?? "unknown model"}</span>
                 <span>{details.usage?.calls ?? 0} text calls</span>
                 <span>{details.usage?.webSearchCalls ?? 0} web searches</span>
                 <span>{details.usage?.totalTokens ?? 0} tokens</span>

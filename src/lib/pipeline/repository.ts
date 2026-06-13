@@ -192,8 +192,8 @@ export async function recentEditorialJobs(limit = 10) {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("job_runs")
-    .select("status,details,finished_at")
-    .eq("job_type", "editorial-draft")
+    .select("job_type,status,details,finished_at")
+    .in("job_type", ["editorial-draft", "curated-draft"])
     .order("finished_at", { ascending: false })
     .limit(limit);
   if (error) throw error;

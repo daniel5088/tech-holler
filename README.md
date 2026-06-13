@@ -96,7 +96,7 @@ Reddit, X, Facebook, Instagram, and TikTok are intentionally absent from the def
 
 ## Operations
 
-The dashboard at `/admin` shows configuration readiness, pending private drafts, their sources and uncertainty notes, and recent token usage. When `ADMIN_DASHBOARD_TOKEN` is set, access requires the token and is stored in a secure HTTP-only cookie. Publication occurs only when an authenticated editor presses the approval button.
+The dashboard at `/admin` includes a structured curated-article editor with live preview, expandable sections and sources, phrase-check excerpts, pending private drafts, and recent token usage. When `ADMIN_DASHBOARD_TOKEN` is set, access requires the token and is stored in a secure HTTP-only cookie. Saving from the editor creates a private draft; publication occurs only when an authenticated editor presses the separate approval button.
 
 To stop scheduled generation and its API spending immediately, set:
 

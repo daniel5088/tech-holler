@@ -4,6 +4,7 @@ import {
   isEditorialDraftBearerAuthorized,
   isSameOriginRequest,
 } from "@/lib/admin-auth";
+import { publishingEnabled } from "@/lib/env";
 import { generateEditorialDraft } from "@/lib/pipeline/editorial-queue";
 
 export async function POST(request: Request) {
@@ -11,6 +12,12 @@ export async function POST(request: Request) {
   const dashboardAuthorized = isSameOriginRequest(request) && (await isAdminAuthenticated());
   if (!bearerAuthorized && !dashboardAuthorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!publishingEnabled) {
+    return NextResponse.json(
+      { status: "paused", reason: "PUBLISHING_ENABLED is false" },
+      { status: 409 },
+    );
   }
 
   const result = await generateEditorialDraft();
