@@ -20,6 +20,7 @@
 # production
 /build
 /.pages-runtime-routes
+/supabase/.temp/
 
 # misc
 .DS_Store

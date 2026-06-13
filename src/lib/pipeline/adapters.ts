@@ -102,7 +102,7 @@ async function bluesky(): Promise<TrendItem[]> {
           replyCount?: number;
         }>;
       }>(
-        `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(query)}&limit=15&sort=top`,
+        `https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(query)}&limit=15&sort=top`,
       ),
     ),
   );
