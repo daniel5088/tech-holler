@@ -42,7 +42,9 @@ export const researchPacketSchema = z.object({
   ).min(3),
   sources: z.array(sourceSchema).min(2),
   disagreements: z.array(z.string()),
-  sourceSnippets: z.array(z.string()),
+  sourceSnippets: z.array(z.string().min(40).max(300)).min(2).max(8).describe(
+    "Short verbatim excerpts of roughly 12 to 24 words copied exactly from the factual sources, used only to detect source-phrase reuse. Never put summaries or paraphrases here.",
+  ),
 });
 
 export const articleDraftSchema = z.object({

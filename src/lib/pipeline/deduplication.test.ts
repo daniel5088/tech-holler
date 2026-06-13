@@ -22,4 +22,20 @@ describe("deduplication", () => {
     const phrase = "this exact sequence of ten words should never appear in drafts unchanged";
     expect(hasSuspiciousPhraseReuse(`An intro. ${phrase}. An ending.`, [phrase])).toBe(true);
   });
+
+  it("detects copied phrases despite punctuation changes", () => {
+    const source =
+      "the company disabled both models for every customer while officials reviewed the directive";
+    const draft =
+      "The company disabled both models for every customer, while officials reviewed the directive.";
+    expect(hasSuspiciousPhraseReuse(draft, [source])).toBe(true);
+  });
+
+  it("allows shorter unavoidable factual wording", () => {
+    const source =
+      "Anthropic disabled Fable 5 and Mythos 5 for all customers after receiving the directive";
+    const draft =
+      "Anthropic disabled Fable 5 and Mythos 5 for all customers, according to its statement.";
+    expect(hasSuspiciousPhraseReuse(draft, [source])).toBe(false);
+  });
 });

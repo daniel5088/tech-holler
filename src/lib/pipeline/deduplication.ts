@@ -52,11 +52,17 @@ export function findDuplicate(
 export function hasSuspiciousPhraseReuse(
   draft: string,
   sourceSnippets: string[],
-  phraseLength = 10,
+  phraseLength = 12,
 ) {
-  const normalizedDraft = draft.toLowerCase().replace(/\s+/g, " ");
+  const normalize = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const normalizedDraft = normalize(draft);
   return sourceSnippets.some((snippet) => {
-    const words = snippet.toLowerCase().replace(/\s+/g, " ").split(" ");
+    const words = normalize(snippet).split(" ");
     for (let index = 0; index <= words.length - phraseLength; index += 1) {
       if (normalizedDraft.includes(words.slice(index, index + phraseLength).join(" "))) {
         return true;
