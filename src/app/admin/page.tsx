@@ -2,10 +2,16 @@ import type { Metadata } from "next";
 import { Activity, Database, KeyRound, Radio, ShieldAlert } from "lucide-react";
 import { env, publishingEnabled, supabaseConfigured } from "@/lib/env";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { getEditorialDrafts, recentEditorialJobs } from "@/lib/pipeline/repository";
 
 export const metadata: Metadata = { title: "Operations dashboard", robots: { index: false } };
+export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ queueResult?: string }>;
+}) {
   const authenticated = await isAdminAuthenticated();
 
   if (!authenticated) {
@@ -22,6 +28,11 @@ export default async function AdminPage() {
     );
   }
 
+  const [drafts, jobs] = await Promise.all([
+    getEditorialDrafts(),
+    recentEditorialJobs(5),
+  ]);
+  const queueResult = (await searchParams).queueResult;
   const checks = [
     { label: "Supabase database", ok: supabaseConfigured, detail: supabaseConfigured ? "Connected" : "Demo fallback" },
     { label: "OpenAI generation", ok: Boolean(env.OPENAI_API_KEY), detail: env.OPENAI_API_KEY ? "Configured" : "Key missing" },
@@ -38,7 +49,7 @@ export default async function AdminPage() {
         </div>
         <span className={`status-pill ${publishingEnabled ? "live" : "paused"}`}>
           <Radio size={13} />
-          {publishingEnabled ? "Publishing live" : "Publishing paused"}
+          {publishingEnabled ? "Draft schedule live" : "Draft schedule paused"}
         </span>
       </header>
 
@@ -51,17 +62,119 @@ export default async function AdminPage() {
         </section>
         <section>
           <Database />
-          <span>Daily schedule</span>
-          <strong>3 stories</strong>
-          <small>7 AM, 1 PM, and 7 PM Eastern</small>
+          <span>Editorial queue</span>
+          <strong>{drafts.length} drafts</strong>
+          <small>Manual approval required to publish</small>
         </section>
         <section>
           <ShieldAlert />
-          <span>Emergency control</span>
-          <strong>{publishingEnabled ? "Armed" : "Stopped"}</strong>
-          <small>Set PUBLISHING_ENABLED to control writes</small>
+          <span>Scheduled generation</span>
+          <strong>{publishingEnabled ? "Enabled" : "Paused"}</strong>
+          <small>Drafts still require manual approval</small>
         </section>
       </div>
+
+      <section className="admin-panel editorial-controls">
+        <div className="panel-heading">
+          <div>
+            <h2>Generate one private draft</h2>
+            <p>One candidate, three text calls maximum, no image generation, no automatic publishing.</p>
+          </div>
+          <span>{env.OPENAI_EDITORIAL_MODEL}</span>
+        </div>
+        {queueResult && (
+          <p className={`queue-result ${queueResult}`}>
+            Latest generation result: {queueResult}
+          </p>
+        )}
+        <form action="/api/admin/editorial-drafts/generate" method="post">
+          <button type="submit">Generate one draft</button>
+        </form>
+      </section>
+
+      <section className="admin-panel">
+        <div className="panel-heading">
+          <h2>Drafts awaiting review</h2>
+          <span>{drafts.length} private</span>
+        </div>
+        <div className="editorial-draft-list">
+          {drafts.length === 0 && <p>No drafts are waiting for review.</p>}
+          {drafts.map((draft) => (
+            <article className="editorial-draft" key={draft.id}>
+              <div className="story-meta">
+                {draft.editorialMode === "talk-around-town" && (
+                  <span className="talk-chip">Talk Around Town</span>
+                )}
+                <span>{draft.category}</span>
+                <span>{draft.confidence} confidence</span>
+                <span>{draft.sources.length} sources</span>
+              </div>
+              <h3>{draft.title}</h3>
+              <p className="draft-dek">{draft.dek}</p>
+              {draft.uncertaintyNote && (
+                <p className="draft-warning">
+                  <strong>Uncertainty:</strong> {draft.uncertaintyNote}
+                </p>
+              )}
+              <div className="draft-quick-take">
+                <strong>Quick take</strong>
+                <ul>
+                  {draft.quickTake.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              </div>
+              <details>
+                <summary>Review full draft and sources</summary>
+                {draft.sections.map((section) => (
+                  <section key={section.heading}>
+                    <h4>{section.heading}</h4>
+                    {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                  </section>
+                ))}
+                <h4>Sources</h4>
+                <ul>
+                  {draft.sources.map((source) => (
+                    <li key={source.url}>
+                      <a href={source.url} target="_blank" rel="noopener noreferrer">
+                        {source.publisher}: {source.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+              <form action={`/api/admin/editorial-drafts/${draft.id}/publish`} method="post">
+                <button type="submit">Publish approved draft</button>
+              </form>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="admin-panel">
+        <div className="panel-heading">
+          <h2>Recent draft-generation usage</h2>
+          <span>Token counts, not price estimates</span>
+        </div>
+        <div className="editorial-job-list">
+          {jobs.length === 0 && <p>No editorial draft jobs recorded yet.</p>}
+          {jobs.map((job, index) => {
+            const details = job.details as {
+              reason?: string;
+              model?: string;
+              usage?: { calls?: number; totalTokens?: number; webSearchCalls?: number };
+            };
+            return (
+              <div key={`${job.finished_at}-${index}`}>
+                <strong>{job.status}</strong>
+                <span>{details.model ?? "unknown model"}</span>
+                <span>{details.usage?.calls ?? 0} text calls</span>
+                <span>{details.usage?.webSearchCalls ?? 0} web searches</span>
+                <span>{details.usage?.totalTokens ?? 0} tokens</span>
+                {details.reason && <small>{details.reason}</small>}
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="admin-panel">
         <div className="panel-heading">
@@ -86,7 +199,7 @@ export default async function AdminPage() {
         </div>
         <code>POST /api/cron/trends</code>
         <code>POST /api/cron/daily</code>
-        <code>POST /api/cron/breaking</code>
+        <code>POST /api/cron/breaking (paused)</code>
         <code>GET /api/health</code>
       </section>
     </main>

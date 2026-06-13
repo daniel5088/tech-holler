@@ -2,13 +2,13 @@ import { demoArticles } from "@/data/demo-articles";
 import { getServiceSupabase } from "@/lib/supabase";
 import type { Article, CategorySlug } from "@/types/content";
 
-type ArticleRow = {
+export type ArticleRow = {
   id: string;
   slug: string;
   title: string;
   dek: string;
   category: CategorySlug;
-  published_at: string;
+  published_at: string | null;
   updated_at: string;
   reading_minutes: number;
   author: string;
@@ -22,11 +22,12 @@ type ArticleRow = {
   sections: Article["sections"];
   sources: Article["sources"];
   revision_note: string | null;
+  created_at: string;
 };
 
 const TALK_AROUND_TOWN_PREFIX = "Talk Around Town: ";
 
-function mapArticle(row: ArticleRow): Article {
+export function mapArticle(row: ArticleRow): Article {
   const isTalkAroundTown = row.revision_note?.startsWith(TALK_AROUND_TOWN_PREFIX) ?? false;
   return {
     id: row.id,
@@ -34,7 +35,7 @@ function mapArticle(row: ArticleRow): Article {
     title: row.title,
     dek: row.dek,
     category: row.category,
-    publishedAt: row.published_at,
+    publishedAt: row.published_at ?? row.created_at,
     updatedAt: row.updated_at,
     readingMinutes: row.reading_minutes,
     author: row.author,

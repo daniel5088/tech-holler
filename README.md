@@ -1,6 +1,6 @@
 # The Tech Holler
 
-A production-oriented automated technology publication built with Next.js, Supabase, and the OpenAI API. It monitors public trend signals, verifies topics against trustworthy sources, writes original articles in a comedic Alabama narrator voice, and publishes on a fixed daily schedule or after a conservative breaking-news gate.
+A production-oriented technology publication built with Next.js, Supabase, and the OpenAI API. It monitors public trend signals, creates a tightly capped private editorial draft, and requires human approval before anything publishes.
 
 The app runs with demonstration stories when external services are not configured. Demo stories are visibly labeled and are not presented as current reporting.
 
@@ -9,14 +9,15 @@ Static demonstration: https://daniel5088.github.io/tech-holler-pages/
 ## Features
 
 - Responsive news homepage, category archives, search, article pages, methodology page, RSS, sitemap, and structured `NewsArticle` metadata.
-- One consistent article format with a quick take, sourced reporting, confidence, forecast horizon, revision history, and generated editorial artwork.
+- One consistent article format with a quick take, sourced reporting, confidence, forecast horizon, and revision history.
 - Trend adapters for Google Trends RSS, Google News RSS, Hacker News, Bluesky, Mastodon, and optional YouTube Data API access.
 - Thirty-minute trend scoring with multi-channel spike detection.
-- OpenAI Responses API research, schema-constrained article writing, a separate verification pass, moderation, and GPT Image generation.
-- Conservative breaking gate requiring two trend channels and two independent trusted factual sources, including one primary or top-tier source.
+- A capped OpenAI workflow using one candidate, one low-context research call, one writing call, one verification call, moderation, and no image generation.
+- A private editorial queue with full draft and source review before manual publication.
+- Talk Around Town analysis for clearly attributed, lower-confidence chatter that does not qualify as confirmed reporting.
 - Duplicate-headline and copied-phrase checks before publication.
 - Supabase Postgres schema, row-level security, audit records, image storage, and Cron/pg_net schedules.
-- Protected operational dashboard and automation endpoints with a global publishing kill switch.
+- Protected operational dashboard and draft-generation endpoints with a global spending switch.
 
 ## Local Development
 
@@ -49,7 +50,7 @@ npm run check
 6. Add the Vercel origin and cron secret to Supabase Vault as shown in `002_cron_jobs.sql`.
 7. Confirm `/api/health` reports the database, OpenAI, and cron authentication as ready.
 8. Trigger `/api/cron/trends` manually and inspect `trend_sweeps` before enabling publication.
-9. Set `PUBLISHING_ENABLED=true` only after source adapters, OpenAI generation, image storage, and audit records have been verified.
+9. Leave `PUBLISHING_ENABLED=false` for manual-only operation. Enabling it permits scheduled private draft generation, never automatic publication.
 
 The production service role key and OpenAI key must only exist in server-side environment variables. Never expose either with a `NEXT_PUBLIC_` prefix.
 
@@ -71,38 +72,37 @@ All cron endpoints require `Authorization: Bearer <CRON_SECRET>`.
 | Endpoint | Purpose |
 | --- | --- |
 | `POST /api/cron/trends` | Collect, cluster, score, and persist public trend signals. |
-| `POST /api/cron/breaking` | Research the strongest qualified spike and publish only after every gate passes. |
-| `POST /api/cron/daily` | Publish one story during the 7 AM, 1 PM, or 7 PM Eastern slot. |
+| `POST /api/cron/breaking` | Paused; returns without researching or spending. |
+| `POST /api/cron/daily` | Generate one private draft during the 7 AM, 1 PM, or 7 PM Eastern slot. |
 | `GET /api/health` | Report service readiness without exposing secrets. |
 
-For controlled testing, `/api/cron/daily?force=true` bypasses the time-window check but still requires cron authentication and `PUBLISHING_ENABLED=true`.
+For controlled testing, `/api/cron/daily?force=true` bypasses the time-window check but still requires cron authentication and `PUBLISHING_ENABLED=true`. The admin dashboard can generate one private draft without enabling the schedule. `EDITORIAL_DRAFT_TOKEN`, when temporarily configured, permits a bearer-authenticated draft-only trigger and should normally remain blank.
 
-Supabase Cron calls the trend and breaking endpoints every 30 minutes. It calls the daily endpoint hourly; the endpoint itself uses `America/New_York` and an idempotent slot key so daylight-saving changes do not shift the editorial schedule or create duplicate runs.
+Supabase Cron calls the trend and breaking endpoints every 30 minutes. Breaking generation is paused. It calls the daily endpoint hourly; the endpoint itself uses `America/New_York` and an idempotent slot key so daylight-saving changes do not shift the editorial schedule or create duplicate drafts.
 
 ## Editorial Rules
 
 - Social, forum, opinion, and single-source activity may support a clearly labeled Talk Around Town analysis, but never becomes confirmed fact merely because it is linked.
 - Breaking stories require at least two independent trusted domains and one primary or top-tier source.
 - Ordinary reported stories still require independent confirmation. Uncertain or disputed claims may publish only in Talk Around Town mode with explicit attribution, a visible uncertainty note, and analysis separated from known facts.
-- Missing attribution, fabricated claims, failed moderation, copied phrasing, or equivalent existing coverage block publication in every mode.
+- Missing attribution, fabricated claims, failed moderation, copied phrasing, or equivalent existing coverage block the draft in every mode.
 - Forecasts must state a horizon, assumptions, and confidence.
 - The narrator may use heavy dialect comedy and mild non-targeted profanity. Slurs, harassment, fabricated quotations, and demeaning stereotypes are prohibited.
-- Generated artwork must be editorial and non-photorealistic, with no logos, text, or deceptive depiction of an actual event.
-- Image-generation failure does not block an otherwise verified story; the site renders deterministic category artwork.
+- The low-cost editorial queue does not call an image model; the site renders deterministic category artwork.
 
 Reddit, X, Facebook, Instagram, and TikTok are intentionally absent from the default free-source implementation. Add them only through compliant official access and update the relevant platform terms review.
 
 ## Operations
 
-The dashboard at `/admin` shows configuration readiness and endpoint details. When `ADMIN_DASHBOARD_TOKEN` is set, access requires the token and is stored in a secure HTTP-only cookie.
+The dashboard at `/admin` shows configuration readiness, pending private drafts, their sources and uncertainty notes, and recent token usage. When `ADMIN_DASHBOARD_TOKEN` is set, access requires the token and is stored in a secure HTTP-only cookie. Publication occurs only when an authenticated editor presses the approval button.
 
-To stop all new publishing immediately, set:
+To stop scheduled generation and its API spending immediately, set:
 
 ```text
 PUBLISHING_ENABLED=false
 ```
 
-Trend sweeps can continue while publishing is paused. Existing articles remain available. Corrections should update the article, append an `article_revisions` record, and retain the visible revision note.
+Trend sweeps and manual dashboard generation can continue while the schedule is paused. Existing articles remain available. Corrections should update the article, append an `article_revisions` record, and retain the visible revision note.
 
 ## Security Note
 

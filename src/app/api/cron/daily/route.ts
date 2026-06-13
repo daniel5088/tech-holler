@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { publishingEnabled } from "@/lib/env";
 import { isAuthorizedCron } from "@/lib/pipeline/auth";
 import { hasCompletedJobForSlot } from "@/lib/pipeline/repository";
-import { runPublishingJob } from "@/lib/pipeline/run";
+import { generateEditorialDraft } from "@/lib/pipeline/editorial-queue";
 
 function easternSlot(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -32,22 +32,16 @@ export async function POST(request: Request) {
     const schedule = easternSlot();
     const forced = url.searchParams.get("force") === "true";
     if (!forced && ![7, 13, 19].includes(schedule.hour)) {
-      return NextResponse.json({ status: "skipped", reason: "Outside an Eastern publishing window" });
+      return NextResponse.json({ status: "skipped", reason: "Outside an Eastern draft-generation window" });
     }
-    if (!forced && (await hasCompletedJobForSlot("daily", schedule.slot))) {
-      return NextResponse.json({ status: "skipped", reason: "Publishing slot already completed" });
+    if (!forced && (await hasCompletedJobForSlot("editorial-draft", schedule.slot))) {
+      return NextResponse.json({ status: "skipped", reason: "Editorial draft slot already completed" });
     }
-    const count = Number(url.searchParams.get("count") ?? "1");
-    const result = await runPublishingJob({ type: "daily", count, slot: schedule.slot });
-    return NextResponse.json({
-      status: "completed",
-      candidateCount: result.candidates.length,
-      results: result.results,
-      adapterErrors: result.errors,
-    });
+    const result = await generateEditorialDraft({ slot: schedule.slot });
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Daily publishing failed" },
+      { error: error instanceof Error ? error.message : "Daily draft generation failed" },
       { status: 500 },
     );
   }

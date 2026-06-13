@@ -4,12 +4,40 @@ import { env } from "@/lib/env";
 import { articleDraftSchema, researchPacketSchema, type ArticleDraft, type ResearchPacket } from "@/lib/pipeline/schemas";
 import type { TrendCluster } from "@/types/content";
 
+export type TokenUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+};
+
+type RequestOptions = {
+  model?: string;
+  maxOutputTokens?: number;
+  searchContextSize?: "low" | "medium" | "high";
+  onUsage?: (usage: TokenUsage) => void;
+};
+
 function client() {
   if (!env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
   return new OpenAI({ apiKey: env.OPENAI_API_KEY });
 }
 
-export async function researchTrend(cluster: TrendCluster): Promise<ResearchPacket> {
+function recordUsage(
+  usage: { input_tokens: number; output_tokens: number; total_tokens: number } | undefined,
+  callback?: RequestOptions["onUsage"],
+) {
+  if (!usage || !callback) return;
+  callback({
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    totalTokens: usage.total_tokens,
+  });
+}
+
+export async function researchTrend(
+  cluster: TrendCluster,
+  options: RequestOptions = {},
+): Promise<ResearchPacket> {
   const signalSummary = cluster.items.slice(0, 12).map((item) => ({
     channel: item.channel,
     title: item.title,
@@ -17,10 +45,11 @@ export async function researchTrend(cluster: TrendCluster): Promise<ResearchPack
   }));
 
   const response = await client().responses.parse({
-    model: env.OPENAI_WRITING_MODEL,
+    model: options.model ?? env.OPENAI_WRITING_MODEL,
+    max_output_tokens: options.maxOutputTokens,
     tools: [{
       type: "web_search",
-      search_context_size: "high",
+      search_context_size: options.searchContextSize ?? "high",
       user_location: {
         type: "approximate",
         country: "US",
@@ -43,6 +72,7 @@ export async function researchTrend(cluster: TrendCluster): Promise<ResearchPack
   });
 
   if (!response.output_parsed) throw new Error("Research model returned no structured packet");
+  recordUsage(response.usage, options.onUsage);
   return response.output_parsed;
 }
 
@@ -50,9 +80,11 @@ export async function writeArticle(
   packet: ResearchPacket,
   isBreaking: boolean,
   repairFeedback?: string,
+  options: RequestOptions = {},
 ): Promise<ArticleDraft> {
   const response = await client().responses.parse({
-    model: env.OPENAI_WRITING_MODEL,
+    model: options.model ?? env.OPENAI_WRITING_MODEL,
+    max_output_tokens: options.maxOutputTokens,
     text: { format: zodTextFormat(articleDraftSchema, "article_draft") },
     input: [
       {
@@ -72,12 +104,18 @@ export async function writeArticle(
   });
 
   if (!response.output_parsed) throw new Error("Writing model returned no structured article");
+  recordUsage(response.usage, options.onUsage);
   return response.output_parsed;
 }
 
-export async function verifyDraft(packet: ResearchPacket, draft: ArticleDraft) {
+export async function verifyDraft(
+  packet: ResearchPacket,
+  draft: ArticleDraft,
+  options: RequestOptions = {},
+) {
   const response = await client().responses.create({
-    model: env.OPENAI_UTILITY_MODEL,
+    model: options.model ?? env.OPENAI_UTILITY_MODEL,
+    max_output_tokens: options.maxOutputTokens,
     input: [
       {
         role: "system",
@@ -91,6 +129,7 @@ export async function verifyDraft(packet: ResearchPacket, draft: ArticleDraft) {
     ],
   });
 
+  recordUsage(response.usage, options.onUsage);
   return {
     passes: response.output_text.trim() === "PASS",
     report: response.output_text.trim(),
