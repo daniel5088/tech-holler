@@ -19,8 +19,11 @@ export async function POST(
 
   try {
     const article = await publishEditorialDraft((await params).id);
-    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/latest");
+    revalidatePath(`/category/${article.category}`);
     revalidatePath("/rss.xml");
+    revalidatePath("/sitemap.xml");
     revalidatePath(`/article/${article.slug}`);
     if (bearerAuthorized) {
       return NextResponse.json({

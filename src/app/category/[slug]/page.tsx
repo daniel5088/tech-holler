@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArticleCard } from "@/components/article-card";
-import { categories, getCategory } from "@/data/site";
+import { getCategory } from "@/data/site";
 import { getArticles } from "@/lib/content";
 import type { CategorySlug } from "@/types/content";
 
-export function generateStaticParams() {
-  return categories.map((category) => ({ slug: category.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,

@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Latest technology news",
   description: "The newest technology reporting and future forecasts from The Tech Holler.",
 };
+export const dynamic = "force-dynamic";
 
 export default async function LatestPage() {
   const articles = await getArticles();

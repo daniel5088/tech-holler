@@ -4,13 +4,11 @@ import { notFound } from "next/navigation";
 import { Clock, ExternalLink, RefreshCw, ShieldCheck } from "lucide-react";
 import { ArticleArt } from "@/components/article-art";
 import { getCategory, SITE_NAME } from "@/data/site";
-import { getArticleBySlug, getArticleSlugs } from "@/lib/content";
+import { getArticleBySlug } from "@/lib/content";
 import { publicUrl, siteUrl } from "@/lib/env";
 import { formatDateTime } from "@/lib/format";
 
-export async function generateStaticParams() {
-  return (await getArticleSlugs()).map((slug) => ({ slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,

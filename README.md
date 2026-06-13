@@ -76,7 +76,7 @@ All cron endpoints require `Authorization: Bearer <CRON_SECRET>`.
 | `POST /api/cron/daily` | Generate one private draft during the 7 AM, 1 PM, or 7 PM Eastern slot. |
 | `GET /api/health` | Report service readiness without exposing secrets. |
 
-For controlled testing, `/api/cron/daily?force=true` bypasses the time-window check but still requires cron authentication and `PUBLISHING_ENABLED=true`. The admin dashboard can generate one private draft without enabling the schedule. `EDITORIAL_DRAFT_TOKEN`, when temporarily configured, permits a bearer-authenticated draft-only trigger and should normally remain blank.
+For controlled testing, `/api/cron/daily?force=true` bypasses the time-window check but still requires cron authentication and `PUBLISHING_ENABLED=true`. AI generation from the admin dashboard is also blocked while that switch is false. `EDITORIAL_DRAFT_TOKEN`, when temporarily configured, permits bearer-authenticated curated submission and manual approval, but it does not bypass the AI spending switch and should normally remain blank.
 
 Editors can also submit schema-valid copy to `POST /api/admin/editorial-drafts/curated`. This path performs completeness, source-policy, phrase-reuse, duplicate, and moderation checks but makes zero generative model calls. It is the preferred path when an editor or coding agent has already researched and written the article.
 

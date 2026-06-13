@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { env, publishingEnabled, supabaseConfigured } from "@/lib/env";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export function GET() {
   const ready = supabaseConfigured && Boolean(env.OPENAI_API_KEY) && Boolean(env.CRON_SECRET);
