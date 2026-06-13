@@ -28,7 +28,12 @@ export async function researchTrend(cluster: TrendCluster): Promise<ResearchPack
       type: "web_search",
       search_context_size: "high",
       filters: { allowed_domains: allowlist() },
-      user_location: { country: "US", region: "Alabama", timezone: "America/New_York" },
+      user_location: {
+        type: "approximate",
+        country: "US",
+        region: "Alabama",
+        timezone: "America/New_York",
+      },
     }],
     text: { format: zodTextFormat(researchPacketSchema, "research_packet") },
     input: [
