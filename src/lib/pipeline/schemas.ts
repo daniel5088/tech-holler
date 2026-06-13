@@ -1,9 +1,18 @@
 import { z } from "zod";
 
+const urlSchema = z.string().refine((value) => {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}, "Invalid URL");
+
 export const sourceSchema = z.object({
   title: z.string().min(4),
   publisher: z.string().min(2),
-  url: z.string().url(),
+  url: urlSchema,
   publishedAt: z.string(),
   sourceType: z.enum(["primary", "top-tier", "specialist", "social-signal"]),
 });
@@ -25,7 +34,7 @@ export const researchPacketSchema = z.object({
   claims: z.array(
     z.object({
       claim: z.string(),
-      evidenceUrls: z.array(z.string().url()).min(1),
+      evidenceUrls: z.array(urlSchema).min(1),
       agreement: z.enum(["confirmed", "mixed", "uncertain"]),
     }),
   ).min(3),
