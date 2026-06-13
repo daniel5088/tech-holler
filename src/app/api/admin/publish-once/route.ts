@@ -18,15 +18,25 @@ export async function GET(request: Request) {
   if (!supabase) {
     return NextResponse.json({ error: "Supabase is not configured" }, { status: 503 });
   }
-  const { data, error } = await supabase
-    .from("research_packets")
-    .select("trend_key,packet,source_gate_passed,created_at")
-    .order("created_at", { ascending: false })
-    .limit(6);
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const [packets, jobs] = await Promise.all([
+    supabase
+      .from("research_packets")
+      .select("trend_key,packet,source_gate_passed,created_at")
+      .order("created_at", { ascending: false })
+      .limit(6),
+    supabase
+      .from("job_runs")
+      .select("job_type,status,details,finished_at")
+      .order("finished_at", { ascending: false })
+      .limit(6),
+  ]);
+  if (packets.error || jobs.error) {
+    return NextResponse.json(
+      { error: packets.error?.message ?? jobs.error?.message },
+      { status: 500 },
+    );
   }
-  return NextResponse.json({ packets: data });
+  return NextResponse.json({ packets: packets.data, jobs: jobs.data });
 }
 
 export async function POST(request: Request) {
