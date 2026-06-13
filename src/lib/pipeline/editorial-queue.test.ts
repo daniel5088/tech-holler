@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   hasIndependentSources: vi.fn(),
   validateResearchPacket: vi.fn(),
   validateTalkAroundTownPacket: vi.fn(),
+  pruneUnsupportedEvidence: vi.fn(),
 }));
 
 vi.mock("@/lib/pipeline/adapters", () => ({
@@ -54,6 +55,7 @@ vi.mock("@/lib/pipeline/source-policy", () => ({
 vi.mock("@/lib/pipeline/research-policy", () => ({
   validateResearchPacket: mocks.validateResearchPacket,
   validateTalkAroundTownPacket: mocks.validateTalkAroundTownPacket,
+  pruneUnsupportedEvidence: mocks.pruneUnsupportedEvidence,
 }));
 
 import { generateEditorialDraft, normalizeDraftCompleteness } from "./editorial-queue";
@@ -145,6 +147,7 @@ describe("editorial queue cost ceiling", () => {
     });
     mocks.validateResearchPacket.mockReturnValue({ passes: true, reasons: [] });
     mocks.validateTalkAroundTownPacket.mockReturnValue({ passes: true, reasons: [] });
+    mocks.pruneUnsupportedEvidence.mockImplementation((value) => value);
     mocks.researchTrend.mockImplementation(async (_candidate, options) => {
       options.onUsage({ inputTokens: 100, outputTokens: 200, totalTokens: 300 });
       return packet;

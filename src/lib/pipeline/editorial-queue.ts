@@ -16,6 +16,7 @@ import {
   recordJob,
 } from "@/lib/pipeline/repository";
 import {
+  pruneUnsupportedEvidence,
   validateResearchPacket,
   validateTalkAroundTownPacket,
 } from "@/lib/pipeline/research-policy";
@@ -109,12 +110,19 @@ export async function generateEditorialDraft(options: { slot?: string } = {}) {
       });
     }
 
-    const packet = await researchTrend(candidate, {
+    const rawPacket = await researchTrend(candidate, {
       model,
       maxOutputTokens: env.EDITORIAL_MAX_OUTPUT_TOKENS,
       searchContextSize: "low",
       onUsage: addUsage("research"),
     });
+    const packet = pruneUnsupportedEvidence(rawPacket);
+    if (!packet) {
+      return finish("blocked", {
+        reason: "Too few correctly mapped claims remain after evidence cleanup",
+        candidate: { key: candidate.key, label: candidate.label },
+      });
+    }
     const sourceGate = hasIndependentSources(packet.sources);
     const researchGate = validateResearchPacket(packet);
     const talkAroundTownGate = validateTalkAroundTownPacket(packet);

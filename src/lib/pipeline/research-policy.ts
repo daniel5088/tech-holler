@@ -17,6 +17,22 @@ function canonicalUrl(value: string) {
   }
 }
 
+export function pruneUnsupportedEvidence(packet: ResearchPacket) {
+  const listedSourceUrls = new Set(packet.sources.map((source) => canonicalUrl(source.url)));
+  const claims = packet.claims.filter((claim) =>
+    claim.evidenceUrls.every((url) => listedSourceUrls.has(canonicalUrl(url))),
+  );
+  const referencedSourceUrls = new Set(
+    claims.flatMap((claim) => claim.evidenceUrls.map(canonicalUrl)),
+  );
+  const sources = packet.sources.filter((source) =>
+    referencedSourceUrls.has(canonicalUrl(source.url)),
+  );
+
+  if (claims.length < 2 || sources.length < 1) return null;
+  return { ...packet, claims, sources };
+}
+
 export function validateResearchPacket(packet: ResearchPacket) {
   const factualSources = packet.sources.filter(
     (source) => source.sourceType !== "social-signal" && isTrustedDomain(source.url),

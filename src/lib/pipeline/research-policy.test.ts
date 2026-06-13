@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  pruneUnsupportedEvidence,
   validateResearchPacket,
   validateTalkAroundTownPacket,
 } from "./research-policy";
@@ -96,6 +97,44 @@ describe("research packet policy", () => {
         unreferencedSources: ["https://bbc.com/news/unused"],
       }),
     );
+  });
+
+  it("prunes mismatched claims and any source left unreferenced", () => {
+    const value = packet();
+    value.claims.push({
+      claim: "A different mission launched under another identifier.",
+      evidenceUrls: ["https://spacex.com/launches/mission/?missionId=wrong-mission"],
+      agreement: "uncertain",
+    });
+    value.sources.push({
+      title: "Different mission page",
+      publisher: "SpaceX",
+      url: "https://spacex.com/launches/mission/?missionId=listed-mission",
+      publishedAt: "2026-06-13T00:00:00Z",
+      sourceType: "primary",
+    });
+
+    const pruned = pruneUnsupportedEvidence(value);
+
+    expect(pruned?.claims).toHaveLength(packet().claims.length);
+    expect(pruned?.sources).toHaveLength(packet().sources.length);
+    expect(validateResearchPacket(pruned!)).toEqual(
+      expect.objectContaining({ passes: true }),
+    );
+  });
+
+  it("blocks cleanup that leaves fewer than two supported claims", () => {
+    const value = packet();
+    value.claims = [
+      value.claims[0],
+      {
+        claim: "A mismatched claim.",
+        evidenceUrls: ["https://example.com/not-listed"],
+        agreement: "uncertain",
+      },
+    ];
+
+    expect(pruneUnsupportedEvidence(value)).toBeNull();
   });
 
   it("allows attributed single-source chatter in Talk Around Town mode", () => {
