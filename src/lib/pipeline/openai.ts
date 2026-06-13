@@ -53,7 +53,11 @@ export async function researchTrend(cluster: TrendCluster): Promise<ResearchPack
   return response.output_parsed;
 }
 
-export async function writeArticle(packet: ResearchPacket, isBreaking: boolean): Promise<ArticleDraft> {
+export async function writeArticle(
+  packet: ResearchPacket,
+  isBreaking: boolean,
+  repairFeedback?: string,
+): Promise<ArticleDraft> {
   const response = await client().responses.parse({
     model: env.OPENAI_WRITING_MODEL,
     text: { format: zodTextFormat(articleDraftSchema, "article_draft") },
@@ -65,7 +69,11 @@ export async function writeArticle(packet: ResearchPacket, isBreaking: boolean):
       },
       {
         role: "user",
-        content: `Write the ${isBreaking ? "breaking" : "scheduled"} article from this packet: ${JSON.stringify(packet)}`,
+        content: `Write the ${isBreaking ? "breaking" : "scheduled"} article from this packet: ${JSON.stringify(packet)}${
+          repairFeedback
+            ? `\nA previous draft was rejected. Rewrite it completely and fix this issue without weakening attribution or adding facts: ${repairFeedback}`
+            : ""
+        }`,
       },
     ],
   });

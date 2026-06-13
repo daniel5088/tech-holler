@@ -37,21 +37,36 @@ export async function produceArticle(cluster: TrendCluster, isBreaking: boolean)
     return { status: "blocked" as const, reason: "Research contains uncertain factual claims" };
   }
 
-  const draft = await writeArticle(packet, isBreaking);
-  const draftText = draft.sections.flatMap((section) => section.paragraphs).join("\n");
-  if (hasSuspiciousPhraseReuse(draftText, packet.sourceSnippets)) {
-    return { status: "blocked" as const, reason: "Potential source phrase reuse detected" };
-  }
+  let draft = await writeArticle(packet, isBreaking);
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const draftText = draft.sections.flatMap((section) => section.paragraphs).join("\n");
+    if (hasSuspiciousPhraseReuse(draftText, packet.sourceSnippets)) {
+      if (attempt < 2) {
+        draft = await writeArticle(
+          packet,
+          isBreaking,
+          "The draft reused source phrasing too closely. Use substantially different sentence structure and wording.",
+        );
+        continue;
+      }
+      return { status: "blocked" as const, reason: "Potential source phrase reuse detected" };
+    }
 
-  const [verification, passesModeration] = await Promise.all([
-    verifyDraft(packet, draft),
-    moderateDraft(draft),
-  ]);
-  if (!verification.passes) {
-    return { status: "blocked" as const, reason: "Factual verification failed", verification };
-  }
-  if (!passesModeration) {
-    return { status: "blocked" as const, reason: "Moderation gate failed" };
+    const [verification, passesModeration] = await Promise.all([
+      verifyDraft(packet, draft),
+      moderateDraft(draft),
+    ]);
+    if (!verification.passes) {
+      if (attempt < 2) {
+        draft = await writeArticle(packet, isBreaking, verification.report);
+        continue;
+      }
+      return { status: "blocked" as const, reason: "Factual verification failed", verification };
+    }
+    if (!passesModeration) {
+      return { status: "blocked" as const, reason: "Moderation gate failed" };
+    }
+    break;
   }
 
   const existingHeadlines = [
