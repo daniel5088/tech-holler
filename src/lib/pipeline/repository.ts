@@ -305,15 +305,25 @@ export async function recordJob(
   });
 }
 
-export async function hasCompletedJobForSlot(jobType: string, slot: string) {
+export async function hasJobForSlot(jobType: string, slot: string) {
   const supabase = getServiceSupabase();
   if (!supabase) return false;
   const { count, error } = await supabase
     .from("job_runs")
     .select("id", { count: "exact", head: true })
     .eq("job_type", jobType)
-    .eq("status", "completed")
     .eq("slot", slot);
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
+export async function hasPendingEditorialDraft() {
+  const supabase = getServiceSupabase();
+  if (!supabase) return false;
+  const { count, error } = await supabase
+    .from("articles")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "draft");
   if (error) throw error;
   return (count ?? 0) > 0;
 }

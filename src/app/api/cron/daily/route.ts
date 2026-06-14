@@ -1,25 +1,9 @@
 import { NextResponse } from "next/server";
-import { publishingEnabled } from "@/lib/env";
+import { env, publishingEnabled } from "@/lib/env";
 import { isAuthorizedCron } from "@/lib/pipeline/auth";
-import { hasCompletedJobForSlot } from "@/lib/pipeline/repository";
+import { hasJobForSlot, hasPendingEditorialDraft } from "@/lib/pipeline/repository";
 import { generateEditorialDraft } from "@/lib/pipeline/editorial-queue";
-
-function easternSlot(date = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-  const value = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? "";
-  return {
-    hour: Number(value("hour")),
-    slot: `${value("year")}-${value("month")}-${value("day")}-${value("hour")}`,
-  };
-}
+import { easternDraftSlot, parseScheduleHours } from "@/lib/pipeline/schedule";
 
 export async function POST(request: Request) {
   if (!isAuthorizedCron(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,13 +13,17 @@ export async function POST(request: Request) {
 
   try {
     const url = new URL(request.url);
-    const schedule = easternSlot();
+    const schedule = easternDraftSlot();
+    const scheduleHours = parseScheduleHours(env.EDITORIAL_SCHEDULE_HOURS);
     const forced = url.searchParams.get("force") === "true";
-    if (!forced && ![7, 13, 19].includes(schedule.hour)) {
+    if (!forced && !scheduleHours.includes(schedule.hour)) {
       return NextResponse.json({ status: "skipped", reason: "Outside an Eastern draft-generation window" });
     }
-    if (!forced && (await hasCompletedJobForSlot("editorial-draft", schedule.slot))) {
-      return NextResponse.json({ status: "skipped", reason: "Editorial draft slot already completed" });
+    if (await hasPendingEditorialDraft()) {
+      return NextResponse.json({ status: "skipped", reason: "A private draft is already awaiting review" });
+    }
+    if (!forced && (await hasJobForSlot("editorial-draft", schedule.slot))) {
+      return NextResponse.json({ status: "skipped", reason: "Editorial draft slot already attempted" });
     }
     const result = await generateEditorialDraft({ slot: schedule.slot });
     return NextResponse.json(result);

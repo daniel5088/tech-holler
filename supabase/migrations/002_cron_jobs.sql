@@ -54,7 +54,7 @@ select cron.schedule(
   $$select public.invoke_tech_holler('/api/cron/breaking');$$
 );
 
--- The endpoint checks America/New_York and only publishes at 7 AM, 1 PM, or 7 PM.
+-- The endpoint checks America/New_York and only drafts during configured schedule hours.
 select cron.schedule(
   'tech-holler-daily-publisher',
   '5 * * * *',

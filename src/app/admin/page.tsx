@@ -4,6 +4,7 @@ import { env, publishingEnabled, supabaseConfigured } from "@/lib/env";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { getEditorialDrafts, recentEditorialJobs } from "@/lib/pipeline/repository";
 import { CuratedEditor } from "@/components/admin/curated-editor";
+import { formatScheduleHours, parseScheduleHours } from "@/lib/pipeline/schedule";
 
 export const metadata: Metadata = { title: "Operations dashboard", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -34,10 +35,12 @@ export default async function AdminPage({
     recentEditorialJobs(5),
   ]);
   const queueResult = (await searchParams).queueResult;
+  const scheduleHours = parseScheduleHours(env.EDITORIAL_SCHEDULE_HOURS);
+  const scheduleLabel = formatScheduleHours(scheduleHours);
   const checks = [
     { label: "Supabase database", ok: supabaseConfigured, detail: supabaseConfigured ? "Connected" : "Demo fallback" },
     { label: "OpenAI generation", ok: Boolean(env.OPENAI_API_KEY), detail: env.OPENAI_API_KEY ? "Configured" : "Key missing" },
-    { label: "Automatic publishing", ok: publishingEnabled, detail: publishingEnabled ? "Enabled" : "Kill switch active" },
+    { label: "Scheduled draft generation", ok: publishingEnabled, detail: publishingEnabled ? "Enabled" : "Kill switch active" },
     { label: "YouTube signal", ok: Boolean(env.YOUTUBE_API_KEY), detail: env.YOUTUBE_API_KEY ? "Configured" : "Optional key missing" },
   ];
 
@@ -71,7 +74,7 @@ export default async function AdminPage({
           <ShieldAlert />
           <span>Scheduled generation</span>
           <strong>{publishingEnabled ? "Enabled" : "Paused"}</strong>
-          <small>Drafts still require manual approval</small>
+          <small>{scheduleLabel || "No valid hours"} Eastern; skips while a draft waits</small>
         </section>
       </div>
 

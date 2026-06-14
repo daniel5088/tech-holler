@@ -50,7 +50,7 @@ npm run check
 6. Add the Vercel origin and cron secret to Supabase Vault as shown in `002_cron_jobs.sql`.
 7. Confirm `/api/health` reports the database, OpenAI, and cron authentication as ready.
 8. Trigger `/api/cron/trends` manually and inspect `trend_sweeps` before enabling publication.
-9. Leave `PUBLISHING_ENABLED=false` for manual-only operation. Enabling it permits scheduled private draft generation, never automatic publication.
+9. Leave `PUBLISHING_ENABLED=false` for manual-only operation. Enabling it permits scheduled private draft generation at `EDITORIAL_SCHEDULE_HOURS`, never automatic publication.
 
 The production service role key and OpenAI key must only exist in server-side environment variables. Never expose either with a `NEXT_PUBLIC_` prefix.
 
@@ -73,14 +73,14 @@ All cron endpoints require `Authorization: Bearer <CRON_SECRET>`.
 | --- | --- |
 | `POST /api/cron/trends` | Collect, cluster, score, and persist public trend signals. |
 | `POST /api/cron/breaking` | Paused; returns without researching or spending. |
-| `POST /api/cron/daily` | Generate one private draft during the 7 AM, 1 PM, or 7 PM Eastern slot. |
+| `POST /api/cron/daily` | Generate one private draft during configured Eastern schedule hours. |
 | `GET /api/health` | Report service readiness without exposing secrets. |
 
 For controlled testing, `/api/cron/daily?force=true` bypasses the time-window check but still requires cron authentication and `PUBLISHING_ENABLED=true`. AI generation from the admin dashboard is also blocked while that switch is false. `EDITORIAL_DRAFT_TOKEN`, when temporarily configured, permits bearer-authenticated curated submission and manual approval, but it does not bypass the AI spending switch and should normally remain blank.
 
 Editors can also submit schema-valid copy to `POST /api/admin/editorial-drafts/curated`. This path performs completeness, source-policy, phrase-reuse, duplicate, and moderation checks but makes zero generative model calls. It is the preferred path when an editor or coding agent has already researched and written the article.
 
-Supabase Cron calls the trend and breaking endpoints every 30 minutes. Breaking generation is paused. It calls the daily endpoint hourly; the endpoint itself uses `America/New_York` and an idempotent slot key so daylight-saving changes do not shift the editorial schedule or create duplicate drafts.
+Supabase Cron calls the trend and breaking endpoints every 30 minutes. Breaking generation is paused. It calls the daily endpoint hourly; the endpoint itself uses `America/New_York`, defaults to 7 AM, records every attempted slot, and skips generation whenever a private draft is already awaiting review.
 
 ## Editorial Rules
 
@@ -104,7 +104,7 @@ To stop scheduled generation and its API spending immediately, set:
 PUBLISHING_ENABLED=false
 ```
 
-Trend sweeps and manual dashboard generation can continue while the schedule is paused. Existing articles remain available. Corrections should update the article, append an `article_revisions` record, and retain the visible revision note.
+Trend sweeps and curated dashboard drafting can continue while the schedule is paused. Existing articles remain available. Corrections should update the article, append an `article_revisions` record, and retain the visible revision note.
 
 ## Security Note
 
