@@ -40,7 +40,7 @@ export default async function AdminPage({
   const checks = [
     { label: "Supabase database", ok: supabaseConfigured, detail: supabaseConfigured ? "Connected" : "Demo fallback" },
     { label: "OpenAI generation", ok: Boolean(env.OPENAI_API_KEY), detail: env.OPENAI_API_KEY ? "Configured" : "Key missing" },
-    { label: "Scheduled draft generation", ok: publishingEnabled, detail: publishingEnabled ? "Enabled" : "Kill switch active" },
+    { label: "AI publishing", ok: publishingEnabled, detail: publishingEnabled ? "Enabled" : "Kill switch active" },
     { label: "YouTube signal", ok: Boolean(env.YOUTUBE_API_KEY), detail: env.YOUTUBE_API_KEY ? "Configured" : "Optional key missing" },
   ];
 
@@ -53,7 +53,7 @@ export default async function AdminPage({
         </div>
         <span className={`status-pill ${publishingEnabled ? "live" : "paused"}`}>
           <Radio size={13} />
-          {publishingEnabled ? "Draft schedule live" : "Draft schedule paused"}
+          {publishingEnabled ? "AI publishing live" : "AI publishing paused"}
         </span>
       </header>
 
@@ -66,15 +66,15 @@ export default async function AdminPage({
         </section>
         <section>
           <Database />
-          <span>Editorial queue</span>
+          <span>Curated review queue</span>
           <strong>{drafts.length} drafts</strong>
-          <small>Manual approval required to publish</small>
+          <small>Manual approval required for editor-written articles</small>
         </section>
         <section>
           <ShieldAlert />
-          <span>Scheduled generation</span>
+          <span>Scheduled AI publishing</span>
           <strong>{publishingEnabled ? "Enabled" : "Paused"}</strong>
-          <small>{scheduleLabel || "No valid hours"} Eastern; skips while a draft waits</small>
+          <small>{scheduleLabel || "No valid hours"} Eastern; one attempt per slot</small>
         </section>
       </div>
 
@@ -92,28 +92,31 @@ export default async function AdminPage({
       <section className="admin-panel editorial-controls">
         <div className="panel-heading">
           <div>
-            <h2>AI draft generation</h2>
-            <p>Disabled while the spending switch is paused. Curated drafts above remain available.</p>
+            <h2>Run AI pipeline now</h2>
+            <p>
+              Researches, writes, verifies, moderates, checks duplicates, and publishes immediately.
+              Each run can incur AI usage.
+            </p>
           </div>
           <span>{publishingEnabled ? env.OPENAI_EDITORIAL_MODEL : "Disabled"}</span>
         </div>
         {aiResult && (
           <p className={`queue-result ${aiResult}`}>
-            Latest generation result: {aiResult}
+            Latest AI run: {aiResult}
           </p>
         )}
         {publishingEnabled ? (
           <form action="/api/admin/editorial-drafts/generate" method="post">
-            <button type="submit">Generate one AI draft</button>
+            <button type="submit">Run AI pipeline and publish</button>
           </form>
         ) : (
-          <button type="button" disabled>Generate one AI draft</button>
+          <button type="button" disabled>AI publishing paused</button>
         )}
       </section>
 
       <section className="admin-panel">
         <div className="panel-heading">
-          <h2>Drafts awaiting review</h2>
+          <h2>Curated drafts awaiting review</h2>
           <span>{drafts.length} private</span>
         </div>
         <div className="editorial-draft-list">
