@@ -4,7 +4,7 @@ import { env, publishingEnabled, supabaseConfigured } from "@/lib/env";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { getEditorialDrafts, recentEditorialJobs } from "@/lib/pipeline/repository";
 import { CuratedEditor } from "@/components/admin/curated-editor";
-import { formatScheduleHours, parseScheduleHours } from "@/lib/pipeline/schedule";
+import { formatCategorySchedule } from "@/lib/pipeline/schedule";
 
 export const metadata: Metadata = { title: "Operations dashboard", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -35,8 +35,7 @@ export default async function AdminPage({
     recentEditorialJobs(5),
   ]);
   const aiResult = (await searchParams).aiResult;
-  const scheduleHours = parseScheduleHours(env.EDITORIAL_SCHEDULE_HOURS);
-  const scheduleLabel = formatScheduleHours(scheduleHours);
+  const scheduleLabels = formatCategorySchedule();
   const checks = [
     { label: "Supabase database", ok: supabaseConfigured, detail: supabaseConfigured ? "Connected" : "Demo fallback" },
     { label: "OpenAI generation", ok: Boolean(env.OPENAI_API_KEY), detail: env.OPENAI_API_KEY ? "Configured" : "Key missing" },
@@ -74,7 +73,7 @@ export default async function AdminPage({
           <ShieldAlert />
           <span>Scheduled AI publishing</span>
           <strong>{publishingEnabled ? "Enabled" : "Paused"}</strong>
-          <small>{scheduleLabel || "No valid hours"} Eastern; one attempt per slot</small>
+          <small>{scheduleLabels.join(" | ")} Eastern</small>
         </section>
       </div>
 

@@ -51,7 +51,7 @@ npm run check
 6. Add the Vercel origin and cron secret to Supabase Vault as shown in `002_cron_jobs.sql`.
 7. Confirm `/api/health` reports the database, OpenAI, and cron authentication as ready.
 8. Trigger `/api/cron/trends` manually and inspect `trend_sweeps` before enabling publication.
-9. Leave `PUBLISHING_ENABLED=false` until automatic AI publication is intended. Enabling it permits scheduled and authenticated on-demand AI runs, which publish immediately after every content gate passes.
+9. Leave `PUBLISHING_ENABLED=false` until automatic AI publication is intended. Enabling it permits the six fixed category slots and authenticated on-demand AI runs, which publish immediately after every content gate passes.
 
 The production service role key and OpenAI key must only exist in server-side environment variables. Never expose either with a `NEXT_PUBLIC_` prefix.
 
@@ -74,14 +74,23 @@ All cron endpoints require `Authorization: Bearer <CRON_SECRET>`.
 | --- | --- |
 | `POST /api/cron/trends` | Collect, cluster, score, and persist public trend signals. |
 | `POST /api/cron/breaking` | Paused; returns without researching or spending. |
-| `POST /api/cron/daily` | Run the full AI pipeline and automatically publish one successful article during configured Eastern schedule hours. |
+| `POST /api/cron/daily` | Run the full AI pipeline for the current fixed Eastern category slot and automatically publish one successful article. |
 | `GET /api/health` | Report service readiness without exposing secrets. |
 
-For controlled testing, `/api/cron/daily?force=true` bypasses the time-window check but still requires cron authentication and `PUBLISHING_ENABLED=true`. The admin dashboard also exposes an authenticated on-demand AI action that runs research, writing, verification, moderation, duplicate checks, and immediate publication; each click can incur AI usage. Both AI entry points are blocked while the switch is false. `EDITORIAL_DRAFT_TOKEN`, when temporarily configured, permits bearer-authenticated curated submission, manual approval, and on-demand AI requests, but it does not bypass the AI spending switch and should normally remain blank.
+For controlled testing, `/api/cron/daily?force=true` bypasses the time-window and scheduled-slot checks but still requires cron authentication and `PUBLISHING_ENABLED=true`. Add a valid `category` query parameter to target one section, or omit it for the existing general selection behavior. The admin dashboard also exposes an authenticated on-demand AI action that runs research, writing, verification, moderation, duplicate checks, and immediate publication; each click can incur AI usage. Both AI entry points are blocked while the switch is false. `EDITORIAL_DRAFT_TOKEN`, when temporarily configured, permits bearer-authenticated curated submission, manual approval, and on-demand AI requests, but it does not bypass the AI spending switch and should normally remain blank.
 
 Editors can also submit schema-valid copy to `POST /api/admin/editorial-drafts/curated`. This path performs completeness, source-policy, phrase-reuse, duplicate, and moderation checks but makes zero generative model calls. It is the preferred path when an editor or coding agent has already researched and written the article.
 
-Supabase Cron calls the trend and breaking endpoints every 30 minutes. Breaking generation is paused. It calls the daily endpoint hourly; the endpoint itself uses `America/New_York`, defaults to 7 AM, and records every attempted slot. Pending curated drafts do not block scheduled AI publication.
+Supabase Cron calls the trend and breaking endpoints every 30 minutes. Breaking generation is paused. It calls the daily endpoint hourly; the endpoint uses `America/New_York` and runs these fixed slots:
+
+- 1:05 AM: AI & Robotics
+- 5:05 AM: Computing & Gadgets
+- 9:05 AM: Cyber & Internet
+- 1:05 PM: Space & Science
+- 5:05 PM: Sci-Fi to Reality
+- 9:05 PM: Futurecasting
+
+Each slot records its Eastern date, hour, and category. A category with no eligible candidate blocks before paid research, never substitutes another category, and is not retried automatically that day. Pending curated drafts do not block scheduled AI publication. Maximum intended usage is six guarded attempts per day.
 
 ## Editorial Rules
 
