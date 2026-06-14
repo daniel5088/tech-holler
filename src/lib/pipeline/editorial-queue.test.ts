@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   writeArticle: vi.fn(),
   verifyDraft: vi.fn(),
   moderateDraft: vi.fn(),
-  persistEditorialDraft: vi.fn(),
+  persistArticle: vi.fn(),
   persistResearchPacket: vi.fn(),
   recentPublishedHeadlines: vi.fn(),
   recordJob: vi.fn(),
@@ -37,7 +37,7 @@ vi.mock("@/lib/pipeline/openai", () => ({
   moderateDraft: mocks.moderateDraft,
 }));
 vi.mock("@/lib/pipeline/repository", () => ({
-  persistEditorialDraft: mocks.persistEditorialDraft,
+  persistArticle: mocks.persistArticle,
   persistResearchPacket: mocks.persistResearchPacket,
   recentPublishedHeadlines: mocks.recentPublishedHeadlines,
   recordJob: mocks.recordJob,
@@ -167,10 +167,10 @@ describe("editorial queue cost ceiling", () => {
     mocks.findDuplicate.mockReturnValue(null);
   });
 
-  it("uses one candidate and saves a private draft after exactly three text calls", async () => {
+  it("publishes one verified AI article after exactly three text calls", async () => {
     const result = await generateEditorialDraft();
 
-    expect(result.status).toBe("completed");
+    expect(result.status).toBe("published");
     expect(mocks.researchTrend).toHaveBeenCalledTimes(1);
     expect(mocks.researchTrend).toHaveBeenCalledWith(
       candidate,
@@ -178,15 +178,40 @@ describe("editorial queue cost ceiling", () => {
     );
     expect(mocks.writeArticle).toHaveBeenCalledTimes(1);
     expect(mocks.verifyDraft).toHaveBeenCalledTimes(1);
-    expect(mocks.persistEditorialDraft).toHaveBeenCalledTimes(1);
+    expect(mocks.persistArticle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: expect.any(String),
+        slug: draft.slug,
+        title: draft.title,
+      }),
+    );
     expect(mocks.recordJob).toHaveBeenCalledWith(
       "editorial-draft",
       "completed",
       expect.objectContaining({
+        article: expect.objectContaining({
+          id: expect.any(String),
+          slug: draft.slug,
+          title: draft.title,
+        }),
         callLimit: 3,
         imageGeneration: false,
         usage: expect.objectContaining({ calls: 3, totalTokens: 1510 }),
       }),
+    );
+  });
+
+  it("publishes nothing when verification blocks the AI article", async () => {
+    mocks.verifyDraft.mockResolvedValue({ passes: false, report: "Unsupported claim" });
+
+    const result = await generateEditorialDraft();
+
+    expect(result.status).toBe("blocked");
+    expect(mocks.persistArticle).not.toHaveBeenCalled();
+    expect(mocks.recordJob).toHaveBeenCalledWith(
+      "editorial-draft",
+      "blocked",
+      expect.objectContaining({ reason: "Verification failed" }),
     );
   });
 

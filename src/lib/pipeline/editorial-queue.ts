@@ -10,7 +10,7 @@ import {
   type TokenUsage,
 } from "@/lib/pipeline/openai";
 import {
-  persistEditorialDraft,
+  persistArticle,
   persistResearchPacket,
   recentPublishedHeadlines,
   recordJob,
@@ -83,10 +83,11 @@ export async function generateEditorialDraft(options: { slot?: string } = {}) {
     records: usage,
   });
   const finish = async (
-    status: "completed" | "blocked" | "failed",
+    jobStatus: "completed" | "blocked" | "failed",
     details: Record<string, unknown>,
+    responseStatus?: "published" | "blocked" | "failed",
   ) => {
-    await recordJob("editorial-draft", status, {
+    await recordJob("editorial-draft", jobStatus, {
       slot: options.slot,
       ...details,
       model,
@@ -95,7 +96,11 @@ export async function generateEditorialDraft(options: { slot?: string } = {}) {
       maxOutputTokensPerGeneration: env.EDITORIAL_MAX_OUTPUT_TOKENS,
       usage: usageSummary(),
     });
-    return { status, ...details, usage: usageSummary() };
+    return {
+      status: responseStatus ?? (jobStatus === "completed" ? "published" : jobStatus),
+      ...details,
+      usage: usageSummary(),
+    };
   };
 
   try {
@@ -242,22 +247,17 @@ export async function generateEditorialDraft(options: { slot?: string } = {}) {
         : undefined,
     };
 
-    await persistEditorialDraft(article, {
-      candidate: {
-        key: candidate.key,
-        label: candidate.label,
-        selectionScore: candidate.selectionScore,
-      },
-      sourceAssessment: effectivePacket.sourceAssessment,
-      disagreements: effectivePacket.disagreements,
-      usage: usageSummary(),
-    });
+    await persistArticle(article);
 
-    return finish("completed", {
-      draft: { id: article.id, slug: article.slug, title: article.title },
-      candidate: { key: candidate.key, label: candidate.label },
-      adapterErrors: errors,
-    });
+    return finish(
+      "completed",
+      {
+        article: { id: article.id, slug: article.slug, title: article.title },
+        candidate: { key: candidate.key, label: candidate.label },
+        adapterErrors: errors,
+      },
+      "published",
+    );
   } catch (error) {
     return finish("failed", {
       reason: error instanceof Error ? error.message : "Editorial draft generation failed",
