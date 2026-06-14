@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
-import { env, publishingEnabled } from "@/lib/env";
+import { publishingEnabled } from "@/lib/env";
 import { isAuthorizedCron } from "@/lib/pipeline/auth";
 import { hasJobForSlot } from "@/lib/pipeline/repository";
 import { generateEditorialDraft } from "@/lib/pipeline/editorial-queue";
-import { easternDraftSlot, parseScheduleHours } from "@/lib/pipeline/schedule";
+import {
+  easternCategorySlot,
+  parseCategorySlug,
+} from "@/lib/pipeline/schedule";
 
 export async function POST(request: Request) {
   if (!isAuthorizedCron(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -13,16 +16,39 @@ export async function POST(request: Request) {
 
   try {
     const url = new URL(request.url);
-    const schedule = easternDraftSlot();
-    const scheduleHours = parseScheduleHours(env.EDITORIAL_SCHEDULE_HOURS);
     const forced = url.searchParams.get("force") === "true";
-    if (!forced && !scheduleHours.includes(schedule.hour)) {
-      return NextResponse.json({ status: "skipped", reason: "Outside an Eastern draft-generation window" });
+    const categoryParam = url.searchParams.get("category");
+    const forcedCategory = categoryParam
+      ? parseCategorySlug(categoryParam)
+      : undefined;
+    if (forced && categoryParam && !forcedCategory) {
+      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
     }
-    if (!forced && (await hasJobForSlot("editorial-draft", schedule.slot))) {
-      return NextResponse.json({ status: "skipped", reason: "Editorial draft slot already attempted" });
+
+    if (forced) {
+      const result = await generateEditorialDraft(
+        forcedCategory ? { category: forcedCategory } : {},
+      );
+      return NextResponse.json(result);
     }
-    const result = await generateEditorialDraft({ slot: schedule.slot });
+
+    const schedule = easternCategorySlot();
+    if (!schedule.category || !schedule.slot) {
+      return NextResponse.json({
+        status: "skipped",
+        reason: "Outside an Eastern category publishing window",
+      });
+    }
+    if (await hasJobForSlot("editorial-draft", schedule.slot)) {
+      return NextResponse.json({
+        status: "skipped",
+        reason: "Editorial category slot already attempted",
+      });
+    }
+    const result = await generateEditorialDraft({
+      slot: schedule.slot,
+      category: schedule.category,
+    });
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
