@@ -1,6 +1,6 @@
 # The Tech Holler
 
-A production-oriented technology publication built with Next.js, Supabase, and the OpenAI API. It monitors public trend signals, creates a tightly capped private editorial draft, and requires human approval before anything publishes.
+A production-oriented technology publication built with Next.js, Supabase, and the OpenAI API. It monitors public trend signals and automatically publishes AI articles only after they pass tightly capped research, verification, moderation, source, and duplicate gates. Human-curated articles remain private until approved.
 
 The app runs with demonstration stories when external services are not configured. Demo stories are visibly labeled and are not presented as current reporting.
 
@@ -13,7 +13,8 @@ Static demonstration: https://daniel5088.github.io/tech-holler-pages/
 - Trend adapters for Google Trends RSS, Google News RSS, Hacker News, Bluesky, Mastodon, and optional YouTube Data API access.
 - Thirty-minute trend scoring with multi-channel spike detection.
 - A capped OpenAI workflow using one candidate, one low-context research call, one writing call, one verification call, moderation, and no image generation.
-- A private editorial queue with full draft and source review before manual publication.
+- Automatic publication for successful scheduled and authenticated on-demand AI runs.
+- A separate private editorial queue with full draft and source review for human-curated articles.
 - Talk Around Town analysis for clearly attributed, lower-confidence chatter that does not qualify as confirmed reporting.
 - Duplicate-headline and copied-phrase checks before publication.
 - Supabase Postgres schema, row-level security, audit records, image storage, and Cron/pg_net schedules.
@@ -50,7 +51,7 @@ npm run check
 6. Add the Vercel origin and cron secret to Supabase Vault as shown in `002_cron_jobs.sql`.
 7. Confirm `/api/health` reports the database, OpenAI, and cron authentication as ready.
 8. Trigger `/api/cron/trends` manually and inspect `trend_sweeps` before enabling publication.
-9. Leave `PUBLISHING_ENABLED=false` for manual-only operation. Enabling it permits scheduled private draft generation at `EDITORIAL_SCHEDULE_HOURS`, never automatic publication.
+9. Leave `PUBLISHING_ENABLED=false` until automatic AI publication is intended. Enabling it permits scheduled and authenticated on-demand AI runs, which publish immediately after every content gate passes.
 
 The production service role key and OpenAI key must only exist in server-side environment variables. Never expose either with a `NEXT_PUBLIC_` prefix.
 
@@ -73,38 +74,38 @@ All cron endpoints require `Authorization: Bearer <CRON_SECRET>`.
 | --- | --- |
 | `POST /api/cron/trends` | Collect, cluster, score, and persist public trend signals. |
 | `POST /api/cron/breaking` | Paused; returns without researching or spending. |
-| `POST /api/cron/daily` | Generate one private draft during configured Eastern schedule hours. |
+| `POST /api/cron/daily` | Run the full AI pipeline and automatically publish one successful article during configured Eastern schedule hours. |
 | `GET /api/health` | Report service readiness without exposing secrets. |
 
-For controlled testing, `/api/cron/daily?force=true` bypasses the time-window check but still requires cron authentication and `PUBLISHING_ENABLED=true`. AI generation from the admin dashboard is also blocked while that switch is false. `EDITORIAL_DRAFT_TOKEN`, when temporarily configured, permits bearer-authenticated curated submission and manual approval, but it does not bypass the AI spending switch and should normally remain blank.
+For controlled testing, `/api/cron/daily?force=true` bypasses the time-window check but still requires cron authentication and `PUBLISHING_ENABLED=true`. The admin dashboard also exposes an authenticated on-demand AI action that runs research, writing, verification, moderation, duplicate checks, and immediate publication; each click can incur AI usage. Both AI entry points are blocked while the switch is false. `EDITORIAL_DRAFT_TOKEN`, when temporarily configured, permits bearer-authenticated curated submission, manual approval, and on-demand AI requests, but it does not bypass the AI spending switch and should normally remain blank.
 
 Editors can also submit schema-valid copy to `POST /api/admin/editorial-drafts/curated`. This path performs completeness, source-policy, phrase-reuse, duplicate, and moderation checks but makes zero generative model calls. It is the preferred path when an editor or coding agent has already researched and written the article.
 
-Supabase Cron calls the trend and breaking endpoints every 30 minutes. Breaking generation is paused. It calls the daily endpoint hourly; the endpoint itself uses `America/New_York`, defaults to 7 AM, records every attempted slot, and skips generation whenever a private draft is already awaiting review.
+Supabase Cron calls the trend and breaking endpoints every 30 minutes. Breaking generation is paused. It calls the daily endpoint hourly; the endpoint itself uses `America/New_York`, defaults to 7 AM, and records every attempted slot. Pending curated drafts do not block scheduled AI publication.
 
 ## Editorial Rules
 
 - Social, forum, opinion, and single-source activity may support a clearly labeled Talk Around Town analysis, but never becomes confirmed fact merely because it is linked.
 - Breaking stories require at least two independent trusted domains and one primary or top-tier source.
 - Ordinary reported stories still require independent confirmation. Uncertain or disputed claims may publish only in Talk Around Town mode with explicit attribution, a visible uncertainty note, and analysis separated from known facts.
-- Missing attribution, fabricated claims, failed moderation, copied phrasing, or equivalent existing coverage block the draft in every mode.
+- Missing attribution, fabricated claims, failed verification or moderation, copied phrasing, or equivalent existing coverage block publication in every mode.
 - Forecasts must state a horizon, assumptions, and confidence.
 - The narrator may use heavy dialect comedy and mild non-targeted profanity. Slurs, harassment, fabricated quotations, and demeaning stereotypes are prohibited.
-- The low-cost editorial queue does not call an image model; the site renders deterministic category artwork.
+- The low-cost AI pipeline does not call an image model; the site renders deterministic category artwork.
 
 Reddit, X, Facebook, Instagram, and TikTok are intentionally absent from the default free-source implementation. Add them only through compliant official access and update the relevant platform terms review.
 
 ## Operations
 
-The dashboard at `/admin` includes a structured curated-article editor with live preview, expandable sections and sources, phrase-check excerpts, pending private drafts, and recent token usage. When `ADMIN_DASHBOARD_TOKEN` is set, access requires the token and is stored in a secure HTTP-only cookie. Saving from the editor creates a private draft; publication occurs only when an authenticated editor presses the separate approval button.
+The dashboard at `/admin` includes a one-click `Run AI pipeline now` action, a structured curated-article editor with live preview, expandable sections and sources, pending private drafts, and recent token usage. The AI action can incur usage and publishes immediately after every gate passes. Saving from the curated editor creates a private draft; publication occurs only when an authenticated editor presses the separate approval button. When `ADMIN_DASHBOARD_TOKEN` is set, access requires the token and is stored in a secure HTTP-only cookie.
 
-To stop scheduled generation and its API spending immediately, set:
+To stop scheduled and on-demand AI generation, publication, and API spending immediately, set:
 
 ```text
 PUBLISHING_ENABLED=false
 ```
 
-Trend sweeps and curated dashboard drafting can continue while the schedule is paused. Existing articles remain available. Corrections should update the article, append an `article_revisions` record, and retain the visible revision note.
+Trend sweeps and curated dashboard drafting can continue while AI publishing is paused. Existing articles remain available. Corrections should update the article, append an `article_revisions` record, and retain the visible revision note.
 
 ## Security Note
 
