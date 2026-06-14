@@ -53,6 +53,7 @@ describe("on-demand AI publishing", () => {
       "https://thetechholler.com/admin?aiResult=published",
     );
     expect(mocks.generateEditorialDraft).toHaveBeenCalledTimes(1);
+    expect(mocks.generateEditorialDraft).toHaveBeenCalledWith();
   });
 
   it("rejects an unauthorized request without running the AI pipeline", async () => {

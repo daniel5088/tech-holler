@@ -316,6 +316,10 @@ describe("editorial queue cost ceiling", () => {
     });
 
     expect(result.status).toBe("published");
+    expect(mocks.researchTrend).toHaveBeenCalledWith(
+      candidate,
+      expect.objectContaining({ targetCategory: "space-science" }),
+    );
     expect(mocks.persistArticle).toHaveBeenCalledWith(
       expect.objectContaining({ category: "space-science" }),
     );
