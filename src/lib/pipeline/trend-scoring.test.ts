@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyTrendCategory,
   clusterTrends,
   editorialNewsworthiness,
   normalizeTopic,
   scoreTrendItem,
+  selectCategoryCandidates,
   selectPublishingCandidates,
 } from "./trend-scoring";
-import type { TrendItem } from "@/types/content";
+import type { TrendCluster, TrendItem } from "@/types/content";
 
 function item(overrides: Partial<TrendItem>): TrendItem {
   return {
@@ -22,6 +24,18 @@ function item(overrides: Partial<TrendItem>): TrendItem {
     ...overrides,
   };
 }
+
+const candidateCluster: TrendCluster = {
+  key: "candidate",
+  label: "Candidate technology story",
+  items: [item({ channel: "google-news" })],
+  score: 80,
+  channels: 2,
+  factualSignals: 2,
+  hasGoogleNews: true,
+  selectionScore: 100,
+  qualifiedForBreaking: true,
+};
 
 describe("trend scoring", () => {
   it("normalizes equivalent topic words", () => {
@@ -142,5 +156,59 @@ describe("trend scoring", () => {
     );
 
     expect(candidates).toHaveLength(0);
+  });
+
+  it.each([
+    ["OpenAI releases new reasoning model for autonomous robots", "ai-robotics"],
+    ["Nvidia unveils next-generation laptop GPU and processor", "computing-gadgets"],
+    ["CISA confirms cloud authentication breach investigation", "cyber-internet"],
+    ["NASA delays Artemis lunar mission after heat shield review", "space-science"],
+    ["Star Trek communicator inspires working universal translator prototype", "sci-fi-reality"],
+    ["Analysts forecast quantum networks could expand by 2030", "futurecasting"],
+  ])("classifies %s as %s", (title, category) => {
+    expect(
+      classifyTrendCategory({
+        ...candidateCluster,
+        label: title,
+        items: [item({ channel: "google-news", title })],
+      }),
+    ).toBe(category);
+  });
+
+  it("rejects an ambiguous candidate instead of assigning a fallback category", () => {
+    expect(
+      classifyTrendCategory({
+        ...candidateCluster,
+        label: "Technology companies announce several new products",
+        items: [
+          item({
+            channel: "google-news",
+            title: "Technology companies announce several new products",
+          }),
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("filters ranked candidates to the requested category", () => {
+    const selected = selectCategoryCandidates(
+      [
+        {
+          ...candidateCluster,
+          key: "space",
+          label: "NASA launches lunar science mission",
+          items: [item({ channel: "google-news", title: "NASA launches lunar science mission" })],
+        },
+        {
+          ...candidateCluster,
+          key: "cyber",
+          label: "CISA confirms major software vulnerability",
+          items: [item({ channel: "google-news", title: "CISA confirms major software vulnerability" })],
+        },
+      ],
+      "space-science",
+    );
+
+    expect(selected.map(({ key }) => key)).toEqual(["space"]);
   });
 });

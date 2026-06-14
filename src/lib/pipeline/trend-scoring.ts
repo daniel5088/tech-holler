@@ -1,4 +1,4 @@
-import type { TrendCluster, TrendItem } from "@/types/content";
+import type { CategorySlug, TrendCluster, TrendItem } from "@/types/content";
 
 const STOP_WORDS = new Set([
   "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in", "is", "it", "of", "on",
@@ -18,6 +18,91 @@ const PROMOTIONAL_LANGUAGE =
   /\b(challenging the .* titans|game.?changer|huge market|pipeline with|redefine|revolutioniz(?:e|es|ing))\b/i;
 const TRUSTED_PUBLISHER_HINT =
   /(?:^| - )(Reuters|Associated Press|AP News|BBC|NPR|Bloomberg|CNBC|Financial Times|The New York Times|The Washington Post|Ars Technica|The Verge|Wired|TechCrunch|Nature|Science|MIT Technology Review|IEEE|NASA|NIST|CISA|Department of Energy)(?:\s|$|\()/i;
+
+const CATEGORY_SIGNALS: Record<CategorySlug, {
+  strong: RegExp[];
+  supporting: RegExp[];
+}> = {
+  "ai-robotics": {
+    strong: [
+      /\bartificial intelligence\b/i,
+      /\bmachine learning\b/i,
+      /\bopenai\b/i,
+      /\brobot(?:s|ics)?\b/i,
+      /\bautonomous (?:agent|machine|system|vehicle)s?\b/i,
+      /\b(?:reasoning|language|foundation|neural) model\b/i,
+      /\bchatbot\b/i,
+    ],
+    supporting: [/\bai\b/i, /\bautomation\b/i, /\bneural\b/i],
+  },
+  "computing-gadgets": {
+    strong: [
+      /\bsemiconductor\b/i,
+      /\bprocessor\b/i,
+      /\bgpu\b/i,
+      /\bcpu\b/i,
+      /\blaptop\b/i,
+      /\bsmartphone\b/i,
+      /\btablet\b/i,
+      /\bconsumer device\b/i,
+      /\bhardware\b/i,
+    ],
+    supporting: [/\bchip\b/i, /\bdevice\b/i, /\bgadget\b/i, /\bcomputer\b/i],
+  },
+  "cyber-internet": {
+    strong: [
+      /\bcybersecurity\b/i,
+      /\bdata breach\b/i,
+      /\bvulnerabilit(?:y|ies)\b/i,
+      /\bmalware\b/i,
+      /\bransomware\b/i,
+      /\bcisa\b/i,
+      /\bauthentication\b/i,
+      /\bnetwork security\b/i,
+    ],
+    supporting: [/\bbreach\b/i, /\bsecurity\b/i, /\bcloud\b/i, /\binternet\b/i, /\bnetwork\b/i],
+  },
+  "space-science": {
+    strong: [
+      /\bnasa\b/i,
+      /\bspacecraft\b/i,
+      /\brocket\b/i,
+      /\blunar\b/i,
+      /\bmars\b/i,
+      /\btelescope\b/i,
+      /\bartemis\b/i,
+      /\bresearchers? discover\b/i,
+      /\bscientists?\b/i,
+    ],
+    supporting: [/\bspace\b/i, /\bmission\b/i, /\bscience\b/i, /\borbit\b/i],
+  },
+  "sci-fi-reality": {
+    strong: [
+      /\bscience fiction\b/i,
+      /\bsci-?fi\b/i,
+      /\bstar trek\b/i,
+      /\bstar wars\b/i,
+      /\bcommunicator\b/i,
+      /\bexoskeleton\b/i,
+      /\bteleport(?:ation|er|ing)?\b/i,
+      /\bfiction inspires?\b/i,
+      /\buniversal translator\b/i,
+    ],
+    supporting: [/\bprototype\b/i, /\bfuturistic\b/i],
+  },
+  futurecasting: {
+    strong: [
+      /\bforecast(?:s|ed|ing)?\b/i,
+      /\bprediction(?:s)?\b/i,
+      /\bby 20\d{2}\b/i,
+      /\bfuture of\b/i,
+      /\bcould become\b/i,
+      /\bnext decade\b/i,
+      /\boutlook\b/i,
+    ],
+    supporting: [/\bcould\b/i, /\bexpected to\b/i, /\blong-term\b/i],
+  },
+};
 
 function topicTokens(title: string) {
   return title
@@ -173,4 +258,26 @@ export function selectPublishingCandidates(
       );
     })
     .sort((left, right) => right.selectionScore - left.selectionScore);
+}
+
+export function classifyTrendCategory(cluster: TrendCluster): CategorySlug | null {
+  const text = [cluster.label, ...cluster.items.map((item) => item.title)].join("\n");
+  const scores = Object.entries(CATEGORY_SIGNALS).map(([category, signals]) => ({
+    category: category as CategorySlug,
+    score:
+      signals.strong.reduce((score, pattern) => score + (pattern.test(text) ? 3 : 0), 0) +
+      signals.supporting.reduce((score, pattern) => score + (pattern.test(text) ? 1 : 0), 0),
+  })).sort((left, right) => right.score - left.score);
+
+  const [best, second] = scores;
+  if (!best || best.score < 3 || best.score - (second?.score ?? 0) < 2) return null;
+  return best.category;
+}
+
+export function selectCategoryCandidates(
+  clusters: TrendCluster[],
+  category: CategorySlug,
+) {
+  return selectPublishingCandidates(clusters, "daily")
+    .filter((cluster) => classifyTrendCategory(cluster) === category);
 }
