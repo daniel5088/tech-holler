@@ -215,6 +215,61 @@ describe("editorial queue cost ceiling", () => {
     );
   });
 
+  it.each([
+    [
+      "candidate selection",
+      () => mocks.selectPublishingCandidates.mockReturnValue([]),
+      "No candidate passed deterministic preselection",
+    ],
+    [
+      "evidence cleanup",
+      () => mocks.pruneUnsupportedEvidence.mockReturnValue(null),
+      "Too few correctly mapped claims remain after evidence cleanup",
+    ],
+    [
+      "attribution mapping",
+      () => {
+        mocks.hasIndependentSources.mockReturnValue({ passes: false });
+        mocks.validateResearchPacket.mockReturnValue({ passes: false, reasons: ["weak sources"] });
+        mocks.validateTalkAroundTownPacket.mockReturnValue({ passes: false, reasons: ["unmapped claim"] });
+      },
+      "Attribution mapping failed",
+    ],
+    [
+      "draft completeness",
+      () => mocks.writeArticle.mockResolvedValue({ ...draft, dek: "Incomplete fragment" }),
+      "Draft contains an incomplete dek or paragraph",
+    ],
+    [
+      "editorial mode labeling",
+      () => mocks.writeArticle.mockResolvedValue({ ...draft, editorialMode: "talk-around-town" }),
+      "Editorial mode or label mismatch",
+    ],
+    [
+      "source phrase reuse",
+      () => mocks.hasSuspiciousPhraseReuse.mockReturnValue(true),
+      "Potential source phrase reuse detected",
+    ],
+    [
+      "moderation",
+      () => mocks.moderateDraft.mockResolvedValue(false),
+      "Moderation gate failed",
+    ],
+    [
+      "duplicate detection",
+      () => mocks.findDuplicate.mockReturnValue({ id: "existing", title: draft.title, slug: draft.slug }),
+      "Equivalent coverage already exists",
+    ],
+  ])("publishes nothing when %s blocks the AI article", async (_gate, arrange, reason) => {
+    arrange();
+
+    const result = await generateEditorialDraft();
+
+    expect(result.status).toBe("blocked");
+    expect(result.reason).toBe(reason);
+    expect(mocks.persistArticle).not.toHaveBeenCalled();
+  });
+
   it("removes only an incomplete trailing fragment when a complete sentence remains", () => {
     const normalized = normalizeDraftCompleteness({
       ...draft,
