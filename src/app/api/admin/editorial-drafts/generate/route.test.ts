@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   isSameOriginRequest: vi.fn(),
   generateEditorialDraft: vi.fn(),
 }));
+const envState = vi.hoisted(() => ({ publishingEnabled: true }));
 
 vi.mock("@/lib/admin-auth", () => ({
   isAdminAuthenticated: mocks.isAdminAuthenticated,
@@ -13,7 +14,9 @@ vi.mock("@/lib/admin-auth", () => ({
   isSameOriginRequest: mocks.isSameOriginRequest,
 }));
 vi.mock("@/lib/env", () => ({
-  publishingEnabled: true,
+  get publishingEnabled() {
+    return envState.publishingEnabled;
+  },
   siteRedirectUrl: (path: string) => new URL(path, "https://thetechholler.com"),
 }));
 vi.mock("@/lib/pipeline/editorial-queue", () => ({
@@ -32,6 +35,7 @@ function request() {
 describe("on-demand AI publishing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    envState.publishingEnabled = true;
     mocks.isEditorialDraftBearerAuthorized.mockReturnValue(false);
     mocks.isSameOriginRequest.mockReturnValue(true);
     mocks.isAdminAuthenticated.mockResolvedValue(true);
@@ -73,5 +77,18 @@ describe("on-demand AI publishing", () => {
         article: expect.objectContaining({ slug: "new-story" }),
       }),
     );
+  });
+
+  it("blocks on-demand AI publishing while the kill switch is off", async () => {
+    envState.publishingEnabled = false;
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      status: "paused",
+      reason: "PUBLISHING_ENABLED is false",
+    });
+    expect(mocks.generateEditorialDraft).not.toHaveBeenCalled();
   });
 });

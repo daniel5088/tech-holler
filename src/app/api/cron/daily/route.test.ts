@@ -6,10 +6,13 @@ const mocks = vi.hoisted(() => ({
   generateEditorialDraft: vi.fn(),
   easternDraftSlot: vi.fn(),
 }));
+const envState = vi.hoisted(() => ({ publishingEnabled: true }));
 
 vi.mock("@/lib/env", () => ({
   env: { EDITORIAL_SCHEDULE_HOURS: "7" },
-  publishingEnabled: true,
+  get publishingEnabled() {
+    return envState.publishingEnabled;
+  },
 }));
 vi.mock("@/lib/pipeline/auth", () => ({
   isAuthorizedCron: mocks.isAuthorizedCron,
@@ -34,6 +37,7 @@ function request() {
 describe("daily editorial schedule", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    envState.publishingEnabled = true;
     mocks.isAuthorizedCron.mockReturnValue(true);
     mocks.easternDraftSlot.mockReturnValue({ hour: 7, slot: "2026-06-14-7" });
     mocks.hasJobForSlot.mockResolvedValue(false);
@@ -80,5 +84,18 @@ describe("daily editorial schedule", () => {
     expect(mocks.generateEditorialDraft).toHaveBeenCalledWith({
       slot: "2026-06-14-7",
     });
+  });
+
+  it("blocks scheduled AI publishing while the kill switch is off", async () => {
+    envState.publishingEnabled = false;
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      status: "paused",
+      reason: "PUBLISHING_ENABLED is false",
+    });
+    expect(mocks.generateEditorialDraft).not.toHaveBeenCalled();
   });
 });
