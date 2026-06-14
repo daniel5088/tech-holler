@@ -1,23 +1,54 @@
 import { describe, expect, it } from "vitest";
-import { easternDraftSlot, formatScheduleHours, parseScheduleHours } from "./schedule";
+import {
+  CATEGORY_SCHEDULE,
+  easternCategorySlot,
+  formatCategorySchedule,
+} from "./schedule";
 
-describe("editorial schedule", () => {
-  it("parses, sorts, and deduplicates valid Eastern hours", () => {
-    expect(parseScheduleHours("19, 7,7,25,nope")).toEqual([7, 19]);
+describe("daily category schedule", () => {
+  it("maps six Eastern hours to the six editorial categories", () => {
+    expect(CATEGORY_SCHEDULE.map(({ hour, category }) => ({ hour, category }))).toEqual([
+      { hour: 1, category: "ai-robotics" },
+      { hour: 5, category: "computing-gadgets" },
+      { hour: 9, category: "cyber-internet" },
+      { hour: 13, category: "space-science" },
+      { hour: 17, category: "sci-fi-reality" },
+      { hour: 21, category: "futurecasting" },
+    ]);
   });
 
-  it("uses America/New_York across daylight-saving time", () => {
-    expect(easternDraftSlot(new Date("2026-06-14T11:05:00Z"))).toEqual({
-      hour: 7,
-      slot: "2026-06-14-7",
-    });
-    expect(easternDraftSlot(new Date("2026-12-14T12:05:00Z"))).toEqual({
-      hour: 7,
-      slot: "2026-12-14-7",
+  it("builds a category-specific slot in daylight-saving time", () => {
+    expect(easternCategorySlot(new Date("2026-06-14T17:05:00Z"))).toEqual({
+      hour: 13,
+      category: "space-science",
+      slot: "2026-06-14-13-space-science",
     });
   });
 
-  it("formats schedule hours for the dashboard", () => {
-    expect(formatScheduleHours([0, 7, 13, 19])).toBe("12 AM, 7 AM, 1 PM, 7 PM");
+  it("builds the same Eastern slot shape in standard time", () => {
+    expect(easternCategorySlot(new Date("2026-12-14T18:05:00Z"))).toEqual({
+      hour: 13,
+      category: "space-science",
+      slot: "2026-12-14-13-space-science",
+    });
+  });
+
+  it("returns no category outside a configured hour", () => {
+    expect(easternCategorySlot(new Date("2026-06-14T18:05:00Z"))).toEqual({
+      hour: 14,
+      category: null,
+      slot: null,
+    });
+  });
+
+  it("formats all schedule entries for the dashboard", () => {
+    expect(formatCategorySchedule()).toEqual([
+      "1 AM - AI & Robotics",
+      "5 AM - Computing & Gadgets",
+      "9 AM - Cyber & Internet",
+      "1 PM - Space & Science",
+      "5 PM - Sci-Fi to Reality",
+      "9 PM - Futurecasting",
+    ]);
   });
 });
