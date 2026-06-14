@@ -5,6 +5,7 @@ import type { TrendCluster } from "@/types/content";
 const mocks = vi.hoisted(() => ({
   collectTrendSignals: vi.fn(),
   clusterTrends: vi.fn(),
+  selectCategoryCandidates: vi.fn(),
   selectPublishingCandidates: vi.fn(),
   researchTrend: vi.fn(),
   writeArticle: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("@/lib/pipeline/adapters", () => ({
 }));
 vi.mock("@/lib/pipeline/trend-scoring", () => ({
   clusterTrends: mocks.clusterTrends,
+  selectCategoryCandidates: mocks.selectCategoryCandidates,
   selectPublishingCandidates: mocks.selectPublishingCandidates,
 }));
 vi.mock("@/lib/pipeline/openai", () => ({
@@ -140,6 +142,7 @@ describe("editorial queue cost ceiling", () => {
       candidate,
       { ...candidate, key: "second-event", label: "Second event" },
     ]);
+    mocks.selectCategoryCandidates.mockReturnValue([candidate]);
     mocks.hasIndependentSources.mockReturnValue({
       passes: true,
       independentDomains: 2,
@@ -268,6 +271,59 @@ describe("editorial queue cost ceiling", () => {
     expect(result.status).toBe("blocked");
     expect(result.reason).toBe(reason);
     expect(mocks.persistArticle).not.toHaveBeenCalled();
+  });
+
+  it("blocks before paid research when no candidate matches the target category", async () => {
+    mocks.selectCategoryCandidates.mockReturnValue([]);
+
+    const result = await generateEditorialDraft({ category: "space-science" });
+
+    expect(result.status).toBe("blocked");
+    expect(result.reason).toBe("No candidate matched the scheduled category");
+    expect(mocks.researchTrend).not.toHaveBeenCalled();
+    expect(mocks.persistArticle).not.toHaveBeenCalled();
+  });
+
+  it("blocks a research packet that returns a different category", async () => {
+    mocks.researchTrend.mockResolvedValue({ ...packet, category: "cyber-internet" });
+
+    const result = await generateEditorialDraft({ category: "space-science" });
+
+    expect(result.status).toBe("blocked");
+    expect(result.reason).toBe("Research category did not match scheduled category");
+    expect(mocks.writeArticle).not.toHaveBeenCalled();
+    expect(mocks.persistArticle).not.toHaveBeenCalled();
+  });
+
+  it("blocks a draft that returns a different category", async () => {
+    mocks.researchTrend.mockResolvedValue({ ...packet, category: "space-science" });
+    mocks.writeArticle.mockResolvedValue({ ...draft, category: "cyber-internet" });
+
+    const result = await generateEditorialDraft({ category: "space-science" });
+
+    expect(result.status).toBe("blocked");
+    expect(result.reason).toBe("Draft category did not match scheduled category");
+    expect(mocks.persistArticle).not.toHaveBeenCalled();
+  });
+
+  it("publishes a targeted article with the scheduled category", async () => {
+    mocks.researchTrend.mockResolvedValue({ ...packet, category: "space-science" });
+    mocks.writeArticle.mockResolvedValue({ ...draft, category: "space-science" });
+
+    const result = await generateEditorialDraft({
+      slot: "2026-06-15-13-space-science",
+      category: "space-science",
+    });
+
+    expect(result.status).toBe("published");
+    expect(mocks.persistArticle).toHaveBeenCalledWith(
+      expect.objectContaining({ category: "space-science" }),
+    );
+    expect(mocks.recordJob).toHaveBeenCalledWith(
+      "editorial-draft",
+      "completed",
+      expect.objectContaining({ category: "space-science" }),
+    );
   });
 
   it("removes only an incomplete trailing fragment when a complete sentence remains", () => {

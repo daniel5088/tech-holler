@@ -22,10 +22,14 @@ import {
 } from "@/lib/pipeline/research-policy";
 import { hasIndependentSources } from "@/lib/pipeline/source-policy";
 import { collectTrendSignals } from "@/lib/pipeline/adapters";
-import { clusterTrends, selectPublishingCandidates } from "@/lib/pipeline/trend-scoring";
+import {
+  clusterTrends,
+  selectCategoryCandidates,
+  selectPublishingCandidates,
+} from "@/lib/pipeline/trend-scoring";
 import type { ResearchPacket } from "@/lib/pipeline/schemas";
 import type { ArticleDraft } from "@/lib/pipeline/schemas";
-import type { Article } from "@/types/content";
+import type { Article, CategorySlug } from "@/types/content";
 
 type UsageRecord = TokenUsage & {
   stage: "research" | "draft" | "verification";
@@ -68,7 +72,9 @@ export function normalizeDraftCompleteness(draft: ArticleDraft) {
   };
 }
 
-export async function generateEditorialDraft(options: { slot?: string } = {}) {
+export async function generateEditorialDraft(
+  options: { slot?: string; category?: CategorySlug } = {},
+) {
   const usage: UsageRecord[] = [];
   const model = env.OPENAI_EDITORIAL_MODEL;
   const addUsage = (stage: UsageRecord["stage"]) => (record: TokenUsage) => {
@@ -89,6 +95,7 @@ export async function generateEditorialDraft(options: { slot?: string } = {}) {
   ) => {
     await recordJob("editorial-draft", jobStatus, {
       slot: options.slot,
+      category: options.category,
       ...details,
       model,
       callLimit: 3,
@@ -106,10 +113,15 @@ export async function generateEditorialDraft(options: { slot?: string } = {}) {
   try {
     const { items, errors } = await collectTrendSignals();
     const clusters = clusterTrends(items);
-    const [candidate] = selectPublishingCandidates(clusters, "daily");
+    const candidates = options.category
+      ? selectCategoryCandidates(clusters, options.category)
+      : selectPublishingCandidates(clusters, "daily");
+    const [candidate] = candidates;
     if (!candidate) {
       return finish("blocked", {
-        reason: "No candidate passed deterministic preselection",
+        reason: options.category
+          ? "No candidate matched the scheduled category"
+          : "No candidate passed deterministic preselection",
         signalCount: items.length,
         adapterErrors: errors,
       });
@@ -119,6 +131,7 @@ export async function generateEditorialDraft(options: { slot?: string } = {}) {
       model,
       maxOutputTokens: env.EDITORIAL_MAX_OUTPUT_TOKENS,
       searchContextSize: "low",
+      targetCategory: options.category,
       onUsage: addUsage("research"),
     });
     const packet = pruneUnsupportedEvidence(rawPacket);
@@ -126,6 +139,13 @@ export async function generateEditorialDraft(options: { slot?: string } = {}) {
       return finish("blocked", {
         reason: "Too few correctly mapped claims remain after evidence cleanup",
         candidate: { key: candidate.key, label: candidate.label },
+      });
+    }
+    if (options.category && packet.category !== options.category) {
+      return finish("blocked", {
+        reason: "Research category did not match scheduled category",
+        expectedCategory: options.category,
+        actualCategory: packet.category,
       });
     }
     const sourceGate = hasIndependentSources(packet.sources);
@@ -164,6 +184,13 @@ export async function generateEditorialDraft(options: { slot?: string } = {}) {
       return finish("blocked", {
         reason: "Draft contains an incomplete dek or paragraph",
         candidate: { key: candidate.key, label: candidate.label },
+      });
+    }
+    if (options.category && draft.category !== options.category) {
+      return finish("blocked", {
+        reason: "Draft category did not match scheduled category",
+        expectedCategory: options.category,
+        actualCategory: draft.category,
       });
     }
     const talkLabelInvalid =

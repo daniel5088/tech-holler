@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { env } from "@/lib/env";
 import { articleDraftSchema, researchPacketSchema, type ArticleDraft, type ResearchPacket } from "@/lib/pipeline/schemas";
-import type { TrendCluster } from "@/types/content";
+import type { CategorySlug, TrendCluster } from "@/types/content";
 
 export type TokenUsage = {
   inputTokens: number;
@@ -14,6 +14,7 @@ type RequestOptions = {
   model?: string;
   maxOutputTokens?: number;
   searchContextSize?: "low" | "medium" | "high";
+  targetCategory?: CategorySlug;
   onUsage?: (usage: TokenUsage) => void;
 };
 
@@ -66,7 +67,11 @@ export async function researchTrend(
       },
       {
         role: "user",
-        content: `Investigate this trend cluster for a possible original article.\nCluster score: ${cluster.score}\nIndependent channels: ${cluster.channels}\nSignals: ${JSON.stringify(signalSummary)}`,
+        content: `Investigate this trend cluster for a possible original article.${
+          options.targetCategory
+            ? `\nThis is for the ${options.targetCategory} desk. Return that exact category or decline to produce a packet.`
+            : ""
+        }\nCluster score: ${cluster.score}\nIndependent channels: ${cluster.channels}\nSignals: ${JSON.stringify(signalSummary)}`,
       },
     ],
   });
