@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { env, publishingEnabled } from "@/lib/env";
 import { isAuthorizedCron } from "@/lib/pipeline/auth";
-import { hasJobForSlot, hasPendingEditorialDraft } from "@/lib/pipeline/repository";
+import { hasJobForSlot } from "@/lib/pipeline/repository";
 import { generateEditorialDraft } from "@/lib/pipeline/editorial-queue";
 import { easternDraftSlot, parseScheduleHours } from "@/lib/pipeline/schedule";
 
@@ -18,9 +18,6 @@ export async function POST(request: Request) {
     const forced = url.searchParams.get("force") === "true";
     if (!forced && !scheduleHours.includes(schedule.hour)) {
       return NextResponse.json({ status: "skipped", reason: "Outside an Eastern draft-generation window" });
-    }
-    if (await hasPendingEditorialDraft()) {
-      return NextResponse.json({ status: "skipped", reason: "A private draft is already awaiting review" });
     }
     if (!forced && (await hasJobForSlot("editorial-draft", schedule.slot))) {
       return NextResponse.json({ status: "skipped", reason: "Editorial draft slot already attempted" });

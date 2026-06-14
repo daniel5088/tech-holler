@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   isAuthorizedCron: vi.fn(),
   hasJobForSlot: vi.fn(),
-  hasPendingEditorialDraft: vi.fn(),
   generateEditorialDraft: vi.fn(),
   easternDraftSlot: vi.fn(),
 }));
@@ -17,7 +16,6 @@ vi.mock("@/lib/pipeline/auth", () => ({
 }));
 vi.mock("@/lib/pipeline/repository", () => ({
   hasJobForSlot: mocks.hasJobForSlot,
-  hasPendingEditorialDraft: mocks.hasPendingEditorialDraft,
 }));
 vi.mock("@/lib/pipeline/editorial-queue", () => ({
   generateEditorialDraft: mocks.generateEditorialDraft,
@@ -38,9 +36,8 @@ describe("daily editorial schedule", () => {
     vi.clearAllMocks();
     mocks.isAuthorizedCron.mockReturnValue(true);
     mocks.easternDraftSlot.mockReturnValue({ hour: 7, slot: "2026-06-14-7" });
-    mocks.hasPendingEditorialDraft.mockResolvedValue(false);
     mocks.hasJobForSlot.mockResolvedValue(false);
-    mocks.generateEditorialDraft.mockResolvedValue({ status: "completed" });
+    mocks.generateEditorialDraft.mockResolvedValue({ status: "published" });
   });
 
   it("skips outside the configured Eastern hour without checking the queue", async () => {
@@ -52,20 +49,16 @@ describe("daily editorial schedule", () => {
     expect(await response.json()).toEqual(
       expect.objectContaining({ status: "skipped" }),
     );
-    expect(mocks.hasPendingEditorialDraft).not.toHaveBeenCalled();
     expect(mocks.generateEditorialDraft).not.toHaveBeenCalled();
   });
 
-  it("skips when a private draft already awaits review", async () => {
-    mocks.hasPendingEditorialDraft.mockResolvedValue(true);
-
+  it("runs independently when curated drafts are awaiting review", async () => {
     const response = await POST(request());
 
-    expect(await response.json()).toEqual({
-      status: "skipped",
-      reason: "A private draft is already awaiting review",
+    expect(await response.json()).toEqual({ status: "published" });
+    expect(mocks.generateEditorialDraft).toHaveBeenCalledWith({
+      slot: "2026-06-14-7",
     });
-    expect(mocks.generateEditorialDraft).not.toHaveBeenCalled();
   });
 
   it("skips a schedule slot that was already attempted", async () => {
@@ -80,10 +73,10 @@ describe("daily editorial schedule", () => {
     expect(mocks.generateEditorialDraft).not.toHaveBeenCalled();
   });
 
-  it("generates one private draft for an allowed empty slot", async () => {
+  it("publishes one AI article for an allowed unattempted slot", async () => {
     const response = await POST(request());
 
-    expect(await response.json()).toEqual({ status: "completed" });
+    expect(await response.json()).toEqual({ status: "published" });
     expect(mocks.generateEditorialDraft).toHaveBeenCalledWith({
       slot: "2026-06-14-7",
     });
