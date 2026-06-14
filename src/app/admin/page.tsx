@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ queueResult?: string }>;
+  searchParams: Promise<{ aiResult?: string }>;
 }) {
   const authenticated = await isAdminAuthenticated();
 
@@ -34,7 +34,7 @@ export default async function AdminPage({
     getEditorialDrafts(),
     recentEditorialJobs(5),
   ]);
-  const queueResult = (await searchParams).queueResult;
+  const aiResult = (await searchParams).aiResult;
   const scheduleHours = parseScheduleHours(env.EDITORIAL_SCHEDULE_HOURS);
   const scheduleLabel = formatScheduleHours(scheduleHours);
   const checks = [
@@ -97,9 +97,9 @@ export default async function AdminPage({
           </div>
           <span>{publishingEnabled ? env.OPENAI_EDITORIAL_MODEL : "Disabled"}</span>
         </div>
-        {queueResult && (
-          <p className={`queue-result ${queueResult}`}>
-            Latest generation result: {queueResult}
+        {aiResult && (
+          <p className={`queue-result ${aiResult}`}>
+            Latest generation result: {aiResult}
           </p>
         )}
         {publishingEnabled ? (

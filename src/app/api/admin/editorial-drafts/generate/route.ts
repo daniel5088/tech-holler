@@ -24,6 +24,6 @@ export async function POST(request: Request) {
   if (bearerAuthorized) return NextResponse.json(result);
 
   const url = siteRedirectUrl("/admin");
-  url.searchParams.set("queueResult", result.status);
+  url.searchParams.set("aiResult", result.status);
   return NextResponse.redirect(url, 303);
 }
