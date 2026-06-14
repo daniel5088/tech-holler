@@ -4,7 +4,7 @@ import {
   isEditorialDraftBearerAuthorized,
   isSameOriginRequest,
 } from "@/lib/admin-auth";
-import { publishingEnabled } from "@/lib/env";
+import { publishingEnabled, siteRedirectUrl } from "@/lib/env";
 import { generateEditorialDraft } from "@/lib/pipeline/editorial-queue";
 
 export async function POST(request: Request) {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   const result = await generateEditorialDraft();
   if (bearerAuthorized) return NextResponse.json(result);
 
-  const url = new URL("/admin", request.url);
+  const url = siteRedirectUrl("/admin");
   url.searchParams.set("queueResult", result.status);
   return NextResponse.redirect(url, 303);
 }

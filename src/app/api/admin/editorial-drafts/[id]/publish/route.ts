@@ -5,6 +5,7 @@ import {
   isEditorialDraftBearerAuthorized,
   isSameOriginRequest,
 } from "@/lib/admin-auth";
+import { siteRedirectUrl } from "@/lib/env";
 import { publishEditorialDraft } from "@/lib/pipeline/repository";
 
 export async function POST(
@@ -31,7 +32,7 @@ export async function POST(
         article: { id: article.id, slug: article.slug, title: article.title },
       });
     }
-    return NextResponse.redirect(new URL(`/article/${article.slug}`, request.url), 303);
+    return NextResponse.redirect(siteRedirectUrl(`/article/${article.slug}`), 303);
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Draft publication failed" },

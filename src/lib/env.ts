@@ -46,6 +46,7 @@ export const siteUrl = env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 export const basePath = env.NEXT_PUBLIC_BASE_PATH || "";
 export const publicUrl = (path: string) =>
   path.startsWith("/") ? `${basePath}${path}` : path;
+export const siteRedirectUrl = (path: string, origin = siteUrl) => new URL(path, origin);
 export const publishingEnabled = env.PUBLISHING_ENABLED === "true";
 export const supabaseConfigured = Boolean(
   env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY,
