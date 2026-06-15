@@ -20,6 +20,7 @@ describe("verification system prompt", () => {
     expect(VERIFICATION_SYSTEM_PROMPT).toContain(
       "Do not excuse invented or overstated facts",
     );
+    expect(VERIFICATION_SYSTEM_PROMPT).toContain("fabricated quotations");
     expect(VERIFICATION_SYSTEM_PROMPT).toContain("weakened attribution");
     expect(VERIFICATION_SYSTEM_PROMPT).toContain(
       "a metaphor that reasonably communicates a new factual claim",
@@ -30,5 +31,6 @@ describe("verification system prompt", () => {
     expect(VERIFICATION_SYSTEM_PROMPT).toContain(
       "presenting chatter as settled fact",
     );
+    expect(VERIFICATION_SYSTEM_PROMPT).toContain("preserved uncertainty");
   });
 });
