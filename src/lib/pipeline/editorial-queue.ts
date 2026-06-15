@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getArticles } from "@/lib/content";
-import { env } from "@/lib/env";
+import { editorialModelName, env } from "@/lib/env";
 import { findDuplicate, hasSuspiciousPhraseReuse } from "@/lib/pipeline/deduplication";
 import {
   moderateDraft,
@@ -76,7 +76,7 @@ export async function generateEditorialDraft(
   options: { slot?: string; category?: CategorySlug } = {},
 ) {
   const usage: UsageRecord[] = [];
-  const model = env.ANTHROPIC_EDITORIAL_MODEL;
+  const model = editorialModelName ?? env.ANTHROPIC_EDITORIAL_MODEL;
   const addUsage = (stage: UsageRecord["stage"]) => (record: TokenUsage) => {
     usage.push({ stage, model, ...record });
   };

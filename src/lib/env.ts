@@ -12,6 +12,10 @@ const envSchema = z.object({
   ANTHROPIC_WRITING_MODEL: z.string().default("claude-opus-4-8"),
   ANTHROPIC_UTILITY_MODEL: z.string().default("claude-haiku-4-5"),
   ANTHROPIC_EDITORIAL_MODEL: z.string().default("claude-sonnet-4-6"),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_WRITING_MODEL: z.string().default("gpt-5.5"),
+  OPENAI_UTILITY_MODEL: z.string().default("gpt-5.4-mini"),
+  OPENAI_EDITORIAL_MODEL: z.string().default("gpt-5.4-mini"),
   EDITORIAL_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(1000).max(12000).default(5000),
   YOUTUBE_API_KEY: z.string().optional(),
   CRON_SECRET: z.string().optional(),
@@ -31,6 +35,10 @@ export const env = envSchema.parse({
   ANTHROPIC_WRITING_MODEL: process.env.ANTHROPIC_WRITING_MODEL,
   ANTHROPIC_UTILITY_MODEL: process.env.ANTHROPIC_UTILITY_MODEL,
   ANTHROPIC_EDITORIAL_MODEL: process.env.ANTHROPIC_EDITORIAL_MODEL,
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  OPENAI_WRITING_MODEL: process.env.OPENAI_WRITING_MODEL,
+  OPENAI_UTILITY_MODEL: process.env.OPENAI_UTILITY_MODEL,
+  OPENAI_EDITORIAL_MODEL: process.env.OPENAI_EDITORIAL_MODEL,
   EDITORIAL_MAX_OUTPUT_TOKENS: process.env.EDITORIAL_MAX_OUTPUT_TOKENS,
   YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
   CRON_SECRET: process.env.CRON_SECRET,
@@ -49,3 +57,11 @@ export const publishingEnabled = env.PUBLISHING_ENABLED === "true";
 export const supabaseConfigured = Boolean(
   env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY,
 );
+export const hasAnthropic = Boolean(env.ANTHROPIC_API_KEY);
+export const hasOpenAI = Boolean(env.OPENAI_API_KEY);
+export const aiProvider = hasAnthropic ? "anthropic" : hasOpenAI ? "openai" : null;
+export const editorialModelName = aiProvider === "anthropic"
+  ? env.ANTHROPIC_EDITORIAL_MODEL
+  : aiProvider === "openai"
+    ? env.OPENAI_EDITORIAL_MODEL
+    : null;

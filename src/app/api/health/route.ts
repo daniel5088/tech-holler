@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
-import { env, publishingEnabled, supabaseConfigured } from "@/lib/env";
+import { aiProvider, env, hasAnthropic, hasOpenAI, publishingEnabled, supabaseConfigured } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
 export function GET() {
-  const ready = supabaseConfigured && Boolean(env.ANTHROPIC_API_KEY) && Boolean(env.CRON_SECRET);
+  const ready = supabaseConfigured && Boolean(aiProvider) && Boolean(env.CRON_SECRET);
   return NextResponse.json(
     {
       status: ready ? "ready" : "setup-required",
       checks: {
         database: supabaseConfigured,
-        anthropic: Boolean(env.ANTHROPIC_API_KEY),
+        anthropic: hasAnthropic,
+        openai: hasOpenAI,
+        aiProvider,
         cronAuth: Boolean(env.CRON_SECRET),
         publishingEnabled,
       },

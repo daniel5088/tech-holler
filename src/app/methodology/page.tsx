@@ -15,7 +15,7 @@ const principles = [
   {
     icon: BookOpenCheck,
     title: "Two different hats",
-    body: "Verified reporting still needs independent trustworthy sourcing. Chatter and single-source claims wear a prominent Talk Around Town label instead.",
+    body: "Verified reporting still needs at least one authoritative trusted factual source. Chatter and thinly corroborated claims wear a prominent Talk Around Town label instead.",
   },
   {
     icon: Scale,
@@ -54,9 +54,9 @@ export default function MethodologyPage() {
           <h2>Breaking-story gate</h2>
           <p>
             A topic must spike across at least two independent trend channels. The factual claims
-            must then be confirmed by two independent trusted sources, one of which is primary or
-            top-tier. Conflicting evidence, missing citations, or a near-duplicate story blocks
-            publication.
+            must then be supported by at least one trusted primary or top-tier source before a
+            reported version can publish. Conflicting evidence, missing citations, failed
+            verification, or a near-duplicate story still blocks publication.
           </p>
         </section>
         <section>
