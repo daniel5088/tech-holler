@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getArticles } from "@/lib/content";
 import { findDuplicate, hasSuspiciousPhraseReuse } from "@/lib/pipeline/deduplication";
 import { normalizeDraftCompleteness } from "@/lib/pipeline/editorial-queue";
-import { moderateDraft } from "@/lib/pipeline/anthropic";
+import { moderateDraft } from "@/lib/pipeline/openai";
 import {
   persistEditorialDraft,
   recentPublishedHeadlines,

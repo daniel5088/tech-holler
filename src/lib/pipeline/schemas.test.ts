@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
+import { zodTextFormat } from "openai/helpers/zod";
 import { sourceSchema } from "@/lib/pipeline/schemas";
 
-describe("research schemas", () => {
-  it("validates URLs without emitting an unsupported format keyword", () => {
+describe("OpenAI response schemas", () => {
+  it("validates URLs without emitting the unsupported uri format", () => {
     expect(() =>
       sourceSchema.parse({
         title: "Primary source",
@@ -14,9 +14,7 @@ describe("research schemas", () => {
       }),
     ).toThrow();
 
-    const jsonSchema = z.toJSONSchema(sourceSchema) as {
-      properties?: Record<string, unknown>;
-    };
-    expect(jsonSchema.properties?.url).toEqual({ type: "string" });
+    const format = zodTextFormat(sourceSchema, "source");
+    expect(format.schema.properties?.url).toEqual({ type: "string" });
   });
 });

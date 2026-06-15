@@ -17,7 +17,7 @@ vi.mock("@/lib/pipeline/deduplication", () => ({
   findDuplicate: mocks.findDuplicate,
   hasSuspiciousPhraseReuse: mocks.hasSuspiciousPhraseReuse,
 }));
-vi.mock("@/lib/pipeline/anthropic", () => ({ moderateDraft: mocks.moderateDraft }));
+vi.mock("@/lib/pipeline/openai", () => ({ moderateDraft: mocks.moderateDraft }));
 vi.mock("@/lib/pipeline/repository", () => ({
   persistEditorialDraft: mocks.persistEditorialDraft,
   recentPublishedHeadlines: mocks.recentPublishedHeadlines,

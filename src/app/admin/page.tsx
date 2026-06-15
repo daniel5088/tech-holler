@@ -38,7 +38,7 @@ export default async function AdminPage({
   const scheduleLabels = formatCategorySchedule();
   const checks = [
     { label: "Supabase database", ok: supabaseConfigured, detail: supabaseConfigured ? "Connected" : "Demo fallback" },
-    { label: "Anthropic generation", ok: Boolean(env.ANTHROPIC_API_KEY), detail: env.ANTHROPIC_API_KEY ? "Configured" : "Key missing" },
+    { label: "OpenAI generation", ok: Boolean(env.OPENAI_API_KEY), detail: env.OPENAI_API_KEY ? "Configured" : "Key missing" },
     { label: "AI publishing", ok: publishingEnabled, detail: publishingEnabled ? "Enabled" : "Kill switch active" },
     { label: "YouTube signal", ok: Boolean(env.YOUTUBE_API_KEY), detail: env.YOUTUBE_API_KEY ? "Configured" : "Optional key missing" },
   ];
@@ -97,7 +97,7 @@ export default async function AdminPage({
               Each run can incur AI usage.
             </p>
           </div>
-          <span>{publishingEnabled ? env.ANTHROPIC_EDITORIAL_MODEL : "Disabled"}</span>
+          <span>{publishingEnabled ? env.OPENAI_EDITORIAL_MODEL : "Disabled"}</span>
         </div>
         {aiResult && (
           <p className={`queue-result ${aiResult}`}>
