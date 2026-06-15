@@ -284,26 +284,16 @@ describe("editorial queue cost ceiling", () => {
     expect(mocks.persistArticle).not.toHaveBeenCalled();
   });
 
-  it("blocks a research packet that returns a different category", async () => {
+  it("publishes a draft under its actual category when research drifts from the slot", async () => {
     mocks.researchTrend.mockResolvedValue({ ...packet, category: "cyber-internet" });
-
-    const result = await generateEditorialDraft({ category: "space-science" });
-
-    expect(result.status).toBe("blocked");
-    expect(result.reason).toBe("Research category did not match scheduled category");
-    expect(mocks.writeArticle).not.toHaveBeenCalled();
-    expect(mocks.persistArticle).not.toHaveBeenCalled();
-  });
-
-  it("blocks a draft that returns a different category", async () => {
-    mocks.researchTrend.mockResolvedValue({ ...packet, category: "space-science" });
     mocks.writeArticle.mockResolvedValue({ ...draft, category: "cyber-internet" });
 
     const result = await generateEditorialDraft({ category: "space-science" });
 
-    expect(result.status).toBe("blocked");
-    expect(result.reason).toBe("Draft category did not match scheduled category");
-    expect(mocks.persistArticle).not.toHaveBeenCalled();
+    expect(result.status).toBe("published");
+    expect(mocks.persistArticle).toHaveBeenCalledWith(
+      expect.objectContaining({ category: "cyber-internet" }),
+    );
   });
 
   it("publishes a targeted article with the scheduled category", async () => {

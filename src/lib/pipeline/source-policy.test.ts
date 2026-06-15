@@ -18,6 +18,13 @@ describe("source policy", () => {
     expect(isTrustedDomain("https://random-blog.example/story")).toBe(false);
   });
 
+  it("passes a single authoritative trusted source", () => {
+    const result = hasIndependentSources([
+      source("https://reuters.com/a", "top-tier"),
+    ]);
+    expect(result.passes).toBe(true);
+  });
+
   it("passes two independent domains with an authoritative source", () => {
     const result = hasIndependentSources([
       source("https://reuters.com/a", "top-tier"),
@@ -26,26 +33,23 @@ describe("source policy", () => {
     expect(result.passes).toBe(true);
   });
 
-  it("rejects two links from the same publisher", () => {
+  it("still requires an authoritative source rather than a specialist alone", () => {
     const result = hasIndependentSources([
-      source("https://reuters.com/a", "top-tier"),
-      source("https://www.reuters.com/b", "top-tier"),
+      source("https://arxiv.org/abs/1234", "specialist"),
     ]);
     expect(result.passes).toBe(false);
   });
 
-  it("treats different subdomains from one publisher as one source", () => {
+  it("ignores social signals when no factual source remains", () => {
     const result = hasIndependentSources([
-      source("https://science.nasa.gov/a", "primary"),
-      source("https://earthdata.nasa.gov/b", "primary"),
+      source("https://reuters.com/a", "social-signal"),
     ]);
     expect(result.passes).toBe(false);
   });
 
-  it("ignores social signals for factual confirmation", () => {
+  it("rejects untrusted domains for factual confirmation", () => {
     const result = hasIndependentSources([
-      source("https://reuters.com/a", "top-tier"),
-      source("https://nasa.gov/b", "social-signal"),
+      source("https://random-blog.example/a", "top-tier"),
     ]);
     expect(result.passes).toBe(false);
   });

@@ -247,14 +247,9 @@ export function selectPublishingCandidates(
     .filter((cluster) => {
       if (type === "breaking") return cluster.qualifiedForBreaking;
       return (
-        cluster.score >= 55 &&
+        cluster.score >= 40 &&
         cluster.factualSignals >= 1 &&
-        cluster.selectionScore >= 65 &&
-        (
-          looksLikeConcreteDevelopment(cluster.label) ||
-          cluster.channels >= 2 ||
-          cluster.factualSignals >= 2
-        )
+        cluster.selectionScore >= 45
       );
     })
     .sort((left, right) => right.selectionScore - left.selectionScore);
@@ -270,7 +265,7 @@ export function classifyTrendCategory(cluster: TrendCluster): CategorySlug | nul
   })).sort((left, right) => right.score - left.score);
 
   const [best, second] = scores;
-  if (!best || best.score < 3 || best.score - (second?.score ?? 0) < 2) return null;
+  if (!best || best.score < 2 || best.score - (second?.score ?? 0) < 1) return null;
   return best.category;
 }
 
@@ -278,6 +273,10 @@ export function selectCategoryCandidates(
   clusters: TrendCluster[],
   category: CategorySlug,
 ) {
-  return selectPublishingCandidates(clusters, "daily")
-    .filter((cluster) => classifyTrendCategory(cluster) === category);
+  const daily = selectPublishingCandidates(clusters, "daily");
+  const matched = daily.filter((cluster) => classifyTrendCategory(cluster) === category);
+  // Prefer candidates that classify into the scheduled category, but fall back to
+  // the general daily ranking so a scheduled slot still publishes something rather
+  // than blocking when nothing maps cleanly to the category.
+  return matched.length ? matched : daily;
 }

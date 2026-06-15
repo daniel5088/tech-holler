@@ -141,13 +141,6 @@ export async function generateEditorialDraft(
         candidate: { key: candidate.key, label: candidate.label },
       });
     }
-    if (options.category && packet.category !== options.category) {
-      return finish("blocked", {
-        reason: "Research category did not match scheduled category",
-        expectedCategory: options.category,
-        actualCategory: packet.category,
-      });
-    }
     const sourceGate = hasIndependentSources(packet.sources);
     const researchGate = validateResearchPacket(packet);
     const talkAroundTownGate = validateTalkAroundTownPacket(packet);
@@ -184,13 +177,6 @@ export async function generateEditorialDraft(
       return finish("blocked", {
         reason: "Draft contains an incomplete dek or paragraph",
         candidate: { key: candidate.key, label: candidate.label },
-      });
-    }
-    if (options.category && draft.category !== options.category) {
-      return finish("blocked", {
-        reason: "Draft category did not match scheduled category",
-        expectedCategory: options.category,
-        actualCategory: draft.category,
       });
     }
     const talkLabelInvalid =
