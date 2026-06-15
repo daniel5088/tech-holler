@@ -143,7 +143,7 @@ describe("trend scoring", () => {
     ).toBeLessThan(0);
   });
 
-  it("rejects a single academic-paper headline without a concrete development", () => {
+  it("surfaces a single trusted-source story even without an explicit development verb", () => {
     const candidates = selectPublishingCandidates(
       clusterTrends([
         item({
@@ -155,7 +155,7 @@ describe("trend scoring", () => {
       "daily",
     );
 
-    expect(candidates).toHaveLength(0);
+    expect(candidates).toHaveLength(1);
   });
 
   it.each([

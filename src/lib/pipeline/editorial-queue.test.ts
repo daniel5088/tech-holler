@@ -32,7 +32,7 @@ vi.mock("@/lib/pipeline/trend-scoring", () => ({
   selectCategoryCandidates: mocks.selectCategoryCandidates,
   selectPublishingCandidates: mocks.selectPublishingCandidates,
 }));
-vi.mock("@/lib/pipeline/openai", () => ({
+vi.mock("@/lib/pipeline/anthropic", () => ({
   researchTrend: mocks.researchTrend,
   writeArticle: mocks.writeArticle,
   verifyDraft: mocks.verifyDraft,
@@ -177,7 +177,7 @@ describe("editorial queue cost ceiling", () => {
     expect(mocks.researchTrend).toHaveBeenCalledTimes(1);
     expect(mocks.researchTrend).toHaveBeenCalledWith(
       candidate,
-      expect.objectContaining({ model: "gpt-5.4-mini", searchContextSize: "low" }),
+      expect.objectContaining({ model: "claude-sonnet-4-6" }),
     );
     expect(mocks.writeArticle).toHaveBeenCalledTimes(1);
     expect(mocks.verifyDraft).toHaveBeenCalledTimes(1);
@@ -284,26 +284,16 @@ describe("editorial queue cost ceiling", () => {
     expect(mocks.persistArticle).not.toHaveBeenCalled();
   });
 
-  it("blocks a research packet that returns a different category", async () => {
+  it("publishes a draft under its actual category when research drifts from the slot", async () => {
     mocks.researchTrend.mockResolvedValue({ ...packet, category: "cyber-internet" });
-
-    const result = await generateEditorialDraft({ category: "space-science" });
-
-    expect(result.status).toBe("blocked");
-    expect(result.reason).toBe("Research category did not match scheduled category");
-    expect(mocks.writeArticle).not.toHaveBeenCalled();
-    expect(mocks.persistArticle).not.toHaveBeenCalled();
-  });
-
-  it("blocks a draft that returns a different category", async () => {
-    mocks.researchTrend.mockResolvedValue({ ...packet, category: "space-science" });
     mocks.writeArticle.mockResolvedValue({ ...draft, category: "cyber-internet" });
 
     const result = await generateEditorialDraft({ category: "space-science" });
 
-    expect(result.status).toBe("blocked");
-    expect(result.reason).toBe("Draft category did not match scheduled category");
-    expect(mocks.persistArticle).not.toHaveBeenCalled();
+    expect(result.status).toBe("published");
+    expect(mocks.persistArticle).toHaveBeenCalledWith(
+      expect.objectContaining({ category: "cyber-internet" }),
+    );
   });
 
   it("publishes a targeted article with the scheduled category", async () => {

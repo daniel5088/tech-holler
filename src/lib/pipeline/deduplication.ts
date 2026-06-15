@@ -36,7 +36,7 @@ export function titleSimilarity(left: string, right: string) {
 export function findDuplicate(
   candidateTitle: string,
   articles: Pick<Article, "id" | "title" | "slug">[],
-  threshold = 0.62,
+  threshold = 0.78,
 ) {
   return (
     articles

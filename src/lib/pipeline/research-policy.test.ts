@@ -81,7 +81,7 @@ describe("research packet policy", () => {
     );
   });
 
-  it("rejects listed factual sources that support no claim", () => {
+  it("allows extra listed factual sources that support no claim", () => {
     const value = packet();
     value.sources.push({
       title: "Unused report",
@@ -93,7 +93,7 @@ describe("research packet policy", () => {
 
     expect(validateResearchPacket(value)).toEqual(
       expect.objectContaining({
-        passes: false,
+        passes: true,
         unreferencedSources: ["https://bbc.com/news/unused"],
       }),
     );

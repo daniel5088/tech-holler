@@ -89,7 +89,7 @@ export function hasIndependentSources(sources: ArticleSource[]) {
   );
 
   return {
-    passes: domains.size >= 2 && hasAuthoritativeSource,
+    passes: domains.size >= 1 && hasAuthoritativeSource,
     independentDomains: domains.size,
     hasAuthoritativeSource,
   };

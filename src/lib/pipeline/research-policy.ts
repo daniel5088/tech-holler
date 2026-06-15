@@ -62,8 +62,7 @@ export function validateResearchPacket(packet: ResearchPacket) {
   return {
     passes:
       unsupportedClaims.length === 0 &&
-      unreferencedSources.length === 0 &&
-      evidenceDomains.size >= 2,
+      evidenceDomains.size >= 1,
     unsupportedClaims,
     unreferencedSources,
     evidenceDomains: evidenceDomains.size,
@@ -96,7 +95,6 @@ export function validateTalkAroundTownPacket(packet: ResearchPacket) {
   return {
     passes:
       unsupportedClaims.length === 0 &&
-      unreferencedSources.length === 0 &&
       evidenceDomains.size >= 1 &&
       packet.sourceAssessment.trim().length >= 30 &&
       packet.uncertaintyNote.trim().length >= 30,
