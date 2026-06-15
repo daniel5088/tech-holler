@@ -8,7 +8,7 @@ import {
   verifyDraft,
   writeArticle,
   type TokenUsage,
-} from "@/lib/pipeline/openai";
+} from "@/lib/pipeline/anthropic";
 import {
   persistArticle,
   persistResearchPacket,
@@ -76,7 +76,7 @@ export async function generateEditorialDraft(
   options: { slot?: string; category?: CategorySlug } = {},
 ) {
   const usage: UsageRecord[] = [];
-  const model = env.OPENAI_EDITORIAL_MODEL;
+  const model = env.ANTHROPIC_EDITORIAL_MODEL;
   const addUsage = (stage: UsageRecord["stage"]) => (record: TokenUsage) => {
     usage.push({ stage, model, ...record });
   };
@@ -130,7 +130,6 @@ export async function generateEditorialDraft(
     const rawPacket = await researchTrend(candidate, {
       model,
       maxOutputTokens: env.EDITORIAL_MAX_OUTPUT_TOKENS,
-      searchContextSize: "low",
       targetCategory: options.category,
       onUsage: addUsage("research"),
     });

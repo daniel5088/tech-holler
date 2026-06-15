@@ -32,7 +32,7 @@ vi.mock("@/lib/pipeline/trend-scoring", () => ({
   selectCategoryCandidates: mocks.selectCategoryCandidates,
   selectPublishingCandidates: mocks.selectPublishingCandidates,
 }));
-vi.mock("@/lib/pipeline/openai", () => ({
+vi.mock("@/lib/pipeline/anthropic", () => ({
   researchTrend: mocks.researchTrend,
   writeArticle: mocks.writeArticle,
   verifyDraft: mocks.verifyDraft,
@@ -177,7 +177,7 @@ describe("editorial queue cost ceiling", () => {
     expect(mocks.researchTrend).toHaveBeenCalledTimes(1);
     expect(mocks.researchTrend).toHaveBeenCalledWith(
       candidate,
-      expect.objectContaining({ model: "gpt-5.4-mini", searchContextSize: "low" }),
+      expect.objectContaining({ model: "claude-sonnet-4-6" }),
     );
     expect(mocks.writeArticle).toHaveBeenCalledTimes(1);
     expect(mocks.verifyDraft).toHaveBeenCalledTimes(1);
