@@ -7,7 +7,7 @@ describe("verification system prompt", () => {
       "titles, deks, quick-take items, headings, and body paragraphs",
     );
     expect(VERIFICATION_SYSTEM_PROMPT).toContain(
-      "Alabama dialect, regional phrasing, jokes, idioms, and rural metaphors",
+      "Alabama dialect, regional phrasing, jokes, idioms, colorful rural comparisons, mild non-targeted profanity, and rural metaphors",
     );
   });
 

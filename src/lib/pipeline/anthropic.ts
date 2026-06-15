@@ -22,6 +22,17 @@ type RequestOptions = {
 
 const RESEARCH_PACKET_SHAPE = JSON.stringify(z.toJSONSchema(researchPacketSchema));
 
+export const VERIFICATION_SYSTEM_PROMPT =
+  "Audit the draft against the research packet and its editorialMode. " +
+  "Judge literal factual assertions against the packet. The publication deliberately uses a strong comedic Alabama-redneck voice in titles, deks, quick-take items, headings, and body paragraphs. " +
+  "Allow Alabama dialect, regional phrasing, jokes, idioms, colorful rural comparisons, mild non-targeted profanity, and rural metaphors when they are obviously figurative. " +
+  "Phrases such as \"barnyard buzz\" are non-factual stylistic language and must not cause failure by themselves. Evaluate the literal factual proposition underneath the style instead of grading how restrained or conventional the prose sounds. " +
+  "Do not excuse invented or overstated facts, fabricated quotations, weakened attribution, or a metaphor that reasonably communicates a new factual claim. " +
+  "For Talk Around Town, PASS only when the title and dek avoid presenting chatter as settled fact, every unverified assertion remains explicitly attributed, the uncertainty note is candid, source quality is described accurately, confirmed facts are separated from analysis, and the publication's thoughts are clearly framed as analysis or possibility. " +
+  "Also require that the draft contain no unverified accusation of crime or personal misconduct, medical or safety instructions, financial advice, or seriously harmful claim about a private person. " +
+  "For every mode, require accurate sources, preserved uncertainty, complete grammar, and no slur, harassment, or demeaning stereotype. " +
+  "Reply with exactly PASS only if all requirements pass; otherwise reply FAIL followed by a concise reason.";
+
 function activeProvider() {
   if (env.ANTHROPIC_API_KEY) return "anthropic" as const;
   if (env.OPENAI_API_KEY) return "openai" as const;
@@ -242,8 +253,7 @@ export async function verifyDraft(
       input: [
         {
           role: "system",
-          content:
-            "Audit the draft against the research packet and its editorialMode. Judge factual assertions against the packet, but do not treat clearly figurative rural analogies or mild non-targeted profanity as factual claims. For Talk Around Town, PASS only when the title and dek avoid presenting chatter as settled fact, every unverified assertion remains explicitly attributed, the uncertainty note is candid, source quality is described accurately, confirmed facts are separated from analysis, and the publication's thoughts are clearly framed as analysis or possibility. Also require that the draft contain no unverified accusation of crime or personal misconduct, medical or safety instructions, financial advice, or seriously harmful claim about a private person. For every mode, require accurate sources, preserved uncertainty, no invented quotation, complete grammar, and no slur, harassment, or demeaning stereotype. Reply with exactly PASS only if all requirements pass; otherwise reply FAIL followed by a concise reason.",
+          content: VERIFICATION_SYSTEM_PROMPT,
         },
         {
           role: "user",
@@ -262,8 +272,7 @@ export async function verifyDraft(
   const response = await anthropicClient().messages.create({
     model: options.model ?? env.ANTHROPIC_UTILITY_MODEL,
     max_tokens: options.maxOutputTokens ?? 800,
-    system:
-      "Audit the draft against the research packet and its editorialMode. Judge factual assertions against the packet, but do not treat clearly figurative rural analogies or mild non-targeted profanity as factual claims. For Talk Around Town, PASS only when the title and dek avoid presenting chatter as settled fact, every unverified assertion remains explicitly attributed, the uncertainty note is candid, source quality is described accurately, confirmed facts are separated from analysis, and the publication's thoughts are clearly framed as analysis or possibility. Also require that the draft contain no unverified accusation of crime or personal misconduct, medical or safety instructions, financial advice, or seriously harmful claim about a private person. For every mode, require accurate sources, preserved uncertainty, no invented quotation, complete grammar, and no slur, harassment, or demeaning stereotype. Reply with exactly PASS only if all requirements pass; otherwise reply FAIL followed by a concise reason.",
+    system: VERIFICATION_SYSTEM_PROMPT,
     messages: [
       {
         role: "user",
