@@ -20,6 +20,10 @@ describe("verification system prompt", () => {
     expect(VERIFICATION_SYSTEM_PROMPT).toContain(
       "Do not excuse invented or overstated facts",
     );
+    expect(VERIFICATION_SYSTEM_PROMPT).toContain("weakened attribution");
+    expect(VERIFICATION_SYSTEM_PROMPT).toContain(
+      "a metaphor that reasonably communicates a new factual claim",
+    );
     expect(VERIFICATION_SYSTEM_PROMPT).toContain(
       "every unverified assertion remains explicitly attributed",
     );
