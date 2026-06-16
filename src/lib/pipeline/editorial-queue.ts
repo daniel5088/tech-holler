@@ -55,16 +55,22 @@ function completeSentencePrefix(value: string, minimumLength: number) {
 
 export function normalizeDraftCompleteness(draft: ArticleDraft) {
   const dek = completeSentencePrefix(draft.dek, 40);
+  const quickTake = draft.quickTake.map((item) => completeSentencePrefix(item, 12));
   const sections = draft.sections.map((section) => ({
     ...section,
     paragraphs: section.paragraphs.map((paragraph) => completeSentencePrefix(paragraph, 80)),
   }));
-  if (!dek || sections.some((section) => section.paragraphs.some((paragraph) => !paragraph))) {
+  if (
+    !dek ||
+    quickTake.some((item) => !item) ||
+    sections.some((section) => section.paragraphs.some((paragraph) => !paragraph))
+  ) {
     return null;
   }
   return {
     ...draft,
     dek,
+    quickTake: quickTake as string[],
     sections: sections.map((section) => ({
       ...section,
       paragraphs: section.paragraphs as string[],
