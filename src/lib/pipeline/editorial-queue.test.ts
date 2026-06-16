@@ -335,4 +335,31 @@ describe("editorial queue cost ceiling", () => {
     expect(normalized?.dek).toBe(draft.dek);
     expect(normalized?.sections[0].paragraphs[0]).toBe(draft.sections[0].paragraphs[0]);
   });
+
+  it("trims an incomplete trailing quick-take fragment back to its complete sentence", () => {
+    const normalized = normalizeDraftCompleteness({
+      ...draft,
+      quickTake: [
+        `${draft.quickTake[0]} This bonus clause trails off without`,
+        draft.quickTake[1],
+        draft.quickTake[2],
+      ],
+    });
+
+    expect(normalized?.quickTake[0]).toBe(draft.quickTake[0]);
+    expect(normalized?.quickTake[1]).toBe(draft.quickTake[1]);
+  });
+
+  it("rejects a draft whose trailing quick-take item is cut off mid-clause", () => {
+    const normalized = normalizeDraftCompleteness({
+      ...draft,
+      quickTake: [
+        draft.quickTake[0],
+        draft.quickTake[1],
+        "OpenHarmony robot launch and the 100-developer giveaway are",
+      ],
+    });
+
+    expect(normalized).toBeNull();
+  });
 });
