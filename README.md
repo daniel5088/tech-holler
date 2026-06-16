@@ -1,6 +1,6 @@
 # The Tech Holler
 
-A production-oriented technology publication built with Next.js, Supabase, and the OpenAI API. It monitors public trend signals and automatically publishes AI articles only after they pass tightly capped research, verification, moderation, source, and duplicate gates. Human-curated articles remain private until approved.
+A production-oriented technology publication built with Next.js, Supabase, and the Anthropic API. It monitors public trend signals and automatically publishes AI articles only after they pass tightly capped research, verification, moderation, source, and duplicate gates. Human-curated articles remain private until approved.
 
 The app runs with demonstration stories when external services are not configured. Demo stories are visibly labeled and are not presented as current reporting.
 
@@ -12,7 +12,7 @@ Static demonstration: https://daniel5088.github.io/tech-holler-pages/
 - One consistent article format with a quick take, sourced reporting, confidence, forecast horizon, and revision history.
 - Trend adapters for Google Trends RSS, Google News RSS, Hacker News, Bluesky, Mastodon, and optional YouTube Data API access.
 - Thirty-minute trend scoring with multi-channel spike detection.
-- A capped OpenAI workflow using one candidate, one low-context research call, one writing call, one verification call, moderation, and no image generation.
+- A capped Anthropic workflow using one candidate, one research call, one writing call, one verification call, moderation, and no image generation.
 - Automatic publication for successful scheduled and authenticated on-demand AI runs.
 - A separate private editorial queue with full draft and source review for human-curated articles.
 - Talk Around Town analysis for clearly attributed, lower-confidence chatter that does not qualify as confirmed reporting.
@@ -49,18 +49,18 @@ npm run check
 4. Set `NEXT_PUBLIC_SITE_URL` to the final HTTPS origin.
 5. Set strong, different values for `CRON_SECRET` and `ADMIN_DASHBOARD_TOKEN`.
 6. Add the Vercel origin and cron secret to Supabase Vault as shown in `002_cron_jobs.sql`.
-7. Confirm `/api/health` reports the database, OpenAI, and cron authentication as ready.
+7. Confirm `/api/health` reports the database, Anthropic generation, and cron authentication as ready.
 8. Trigger `/api/cron/trends` manually and inspect `trend_sweeps` before enabling publication.
 9. Leave `PUBLISHING_ENABLED=false` until automatic AI publication is intended. Enabling it permits the six fixed category slots and authenticated on-demand AI runs, which publish immediately after every content gate passes.
 
-The production service role key and OpenAI key must only exist in server-side environment variables. Never expose either with a `NEXT_PUBLIC_` prefix.
+The production service role key and Anthropic key must only exist in server-side environment variables. Never expose either with a `NEXT_PUBLIC_` prefix.
 
 ## GitHub Pages
 
 The private source repository validates a static demonstration on every push. Because the
 current GitHub plan does not support Pages from private repositories, the generated site is
 published from the separate public `daniel5088/tech-holler-pages` artifact repository.
-GitHub Pages does not run the OpenAI, Supabase, cron, admin-session, or publishing
+GitHub Pages does not run the Anthropic, Supabase, cron, admin-session, or publishing
 endpoints. Those capabilities still require the production deployment described above.
 The Pages site contains labeled demonstration stories and a read-only operations view.
 
@@ -90,13 +90,13 @@ Supabase Cron calls the trend and breaking endpoints every 30 minutes. Breaking 
 - 5:05 PM: Sci-Fi to Reality
 - 9:05 PM: Futurecasting
 
-Each slot records its Eastern date, hour, and category. A category with no eligible candidate blocks before paid research, never substitutes another category, and is not retried automatically that day. Pending curated drafts do not block scheduled AI publication. Maximum intended usage is six guarded attempts per day.
+Each slot records its Eastern date, hour, and preferred category. The scheduler first tries candidates that classify into that desk. If none map cleanly, it falls back to the general daily ranking so the slot can still publish a suitable article after all content gates pass. A blocked or failed slot is not retried automatically that day. Pending curated drafts do not block scheduled AI publication. Maximum intended usage is six guarded attempts per day.
 
 ## Editorial Rules
 
 - Social, forum, opinion, and single-source activity may support a clearly labeled Talk Around Town analysis, but never becomes confirmed fact merely because it is linked.
-- Breaking stories require at least two independent trusted domains and one primary or top-tier source.
-- Ordinary reported stories still require independent confirmation. Uncertain or disputed claims may publish only in Talk Around Town mode with explicit attribution, a visible uncertainty note, and analysis separated from known facts.
+- Breaking stories still require a multi-channel trend spike, but reported publication may proceed with one authoritative trusted source when the factual packet, verification, and duplicate gates all pass.
+- Ordinary reported stories now require at least one trusted non-social factual source with an authoritative source type. Uncertain or disputed claims may publish only in Talk Around Town mode with explicit attribution, a visible uncertainty note, and analysis separated from known facts.
 - Missing attribution, fabricated claims, failed verification or moderation, copied phrasing, or equivalent existing coverage block publication in every mode.
 - Forecasts must state a horizon, assumptions, and confidence.
 - The narrator may use heavy dialect comedy and mild non-targeted profanity. Slurs, harassment, fabricated quotations, and demeaning stereotypes are prohibited.

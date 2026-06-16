@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Activity, Database, KeyRound, Radio, ShieldAlert } from "lucide-react";
-import { env, publishingEnabled, supabaseConfigured } from "@/lib/env";
+import { aiProvider, editorialModelName, env, hasAnthropic, hasOpenAI, publishingEnabled, supabaseConfigured } from "@/lib/env";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { getEditorialDrafts, recentEditorialJobs } from "@/lib/pipeline/repository";
 import { CuratedEditor } from "@/components/admin/curated-editor";
@@ -38,7 +38,17 @@ export default async function AdminPage({
   const scheduleLabels = formatCategorySchedule();
   const checks = [
     { label: "Supabase database", ok: supabaseConfigured, detail: supabaseConfigured ? "Connected" : "Demo fallback" },
-    { label: "OpenAI generation", ok: Boolean(env.OPENAI_API_KEY), detail: env.OPENAI_API_KEY ? "Configured" : "Key missing" },
+    {
+      label: "AI generation",
+      ok: Boolean(aiProvider),
+      detail: aiProvider === "anthropic"
+        ? `Anthropic configured (${env.ANTHROPIC_EDITORIAL_MODEL})`
+        : aiProvider === "openai"
+          ? `OpenAI configured (${env.OPENAI_EDITORIAL_MODEL})`
+          : "No AI provider key configured",
+    },
+    { label: "Anthropic fallback", ok: hasAnthropic, detail: hasAnthropic ? "Configured" : "Key missing" },
+    { label: "OpenAI fallback", ok: hasOpenAI, detail: hasOpenAI ? "Configured" : "Key missing" },
     { label: "AI publishing", ok: publishingEnabled, detail: publishingEnabled ? "Enabled" : "Kill switch active" },
     { label: "YouTube signal", ok: Boolean(env.YOUTUBE_API_KEY), detail: env.YOUTUBE_API_KEY ? "Configured" : "Optional key missing" },
   ];
@@ -97,7 +107,7 @@ export default async function AdminPage({
               Each run can incur AI usage.
             </p>
           </div>
-          <span>{publishingEnabled ? env.OPENAI_EDITORIAL_MODEL : "Disabled"}</span>
+          <span>{publishingEnabled ? (editorialModelName ?? "No model configured") : "Disabled"}</span>
         </div>
         {aiResult && (
           <p className={`queue-result ${aiResult}`}>

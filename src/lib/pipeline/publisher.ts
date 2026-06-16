@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { getArticleBySlug, getArticles } from "@/lib/content";
 import { findDuplicate, hasSuspiciousPhraseReuse } from "@/lib/pipeline/deduplication";
-import { generateHeroImage, moderateDraft, researchTrend, verifyDraft, writeArticle } from "@/lib/pipeline/openai";
+import { moderateDraft, researchTrend, verifyDraft, writeArticle } from "@/lib/pipeline/anthropic";
 import {
   persistArticle,
   persistResearchPacket,
   recentPublishedHeadlines,
   updatePublishedArticle,
-  uploadHeroImage,
 } from "@/lib/pipeline/repository";
 import {
   validateResearchPacket,
@@ -117,14 +116,6 @@ export async function produceArticle(cluster: TrendCluster, isBreaking: boolean)
     };
   }
 
-  let heroImageUrl: string | undefined;
-  try {
-    const image = await generateHeroImage(draft.heroImagePrompt);
-    if (image) heroImageUrl = (await uploadHeroImage(draft.slug, image)) ?? undefined;
-  } catch (error) {
-    console.error("Hero generation failed; deterministic site art will be used.", error);
-  }
-
   const now = new Date().toISOString();
   const existingArticle = duplicate
     ? await getArticleBySlug(duplicate.article.slug)
@@ -147,7 +138,7 @@ export async function produceArticle(cluster: TrendCluster, isBreaking: boolean)
     isBreaking: isBreaking && reportedEligible,
     trendScore: cluster.score,
     forecastHorizon: draft.forecastHorizon ?? undefined,
-    heroImageUrl: heroImageUrl ?? existingArticle?.heroImageUrl,
+    heroImageUrl: existingArticle?.heroImageUrl,
     heroImageAlt: draft.heroImageAlt,
     quickTake: draft.quickTake,
     sections: draft.sections,

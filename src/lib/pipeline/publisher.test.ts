@@ -7,7 +7,6 @@ const mocks = vi.hoisted(() => ({
   getArticles: vi.fn(),
   findDuplicate: vi.fn(),
   hasSuspiciousPhraseReuse: vi.fn(),
-  generateHeroImage: vi.fn(),
   moderateDraft: vi.fn(),
   researchTrend: vi.fn(),
   verifyDraft: vi.fn(),
@@ -16,7 +15,6 @@ const mocks = vi.hoisted(() => ({
   persistResearchPacket: vi.fn(),
   recentPublishedHeadlines: vi.fn(),
   updatePublishedArticle: vi.fn(),
-  uploadHeroImage: vi.fn(),
   hasIndependentSources: vi.fn(),
 }));
 
@@ -28,8 +26,7 @@ vi.mock("@/lib/pipeline/deduplication", () => ({
   findDuplicate: mocks.findDuplicate,
   hasSuspiciousPhraseReuse: mocks.hasSuspiciousPhraseReuse,
 }));
-vi.mock("@/lib/pipeline/openai", () => ({
-  generateHeroImage: mocks.generateHeroImage,
+vi.mock("@/lib/pipeline/anthropic", () => ({
   moderateDraft: mocks.moderateDraft,
   researchTrend: mocks.researchTrend,
   verifyDraft: mocks.verifyDraft,
@@ -40,7 +37,6 @@ vi.mock("@/lib/pipeline/repository", () => ({
   persistResearchPacket: mocks.persistResearchPacket,
   recentPublishedHeadlines: mocks.recentPublishedHeadlines,
   updatePublishedArticle: mocks.updatePublishedArticle,
-  uploadHeroImage: mocks.uploadHeroImage,
 }));
 vi.mock("@/lib/pipeline/source-policy", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./source-policy")>()),
@@ -147,7 +143,6 @@ describe("article draft repair", () => {
     mocks.getArticles.mockResolvedValue([]);
     mocks.recentPublishedHeadlines.mockResolvedValue([]);
     mocks.findDuplicate.mockReturnValue(null);
-    mocks.generateHeroImage.mockResolvedValue(null);
   });
 
   it("rewrites once after suspicious phrase reuse", async () => {

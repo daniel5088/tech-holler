@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getArticles } from "@/lib/content";
-import { env } from "@/lib/env";
+import { editorialModelName, env } from "@/lib/env";
 import { findDuplicate, hasSuspiciousPhraseReuse } from "@/lib/pipeline/deduplication";
 import {
   moderateDraft,
@@ -8,7 +8,7 @@ import {
   verifyDraft,
   writeArticle,
   type TokenUsage,
-} from "@/lib/pipeline/openai";
+} from "@/lib/pipeline/anthropic";
 import {
   persistArticle,
   persistResearchPacket,
@@ -55,16 +55,22 @@ function completeSentencePrefix(value: string, minimumLength: number) {
 
 export function normalizeDraftCompleteness(draft: ArticleDraft) {
   const dek = completeSentencePrefix(draft.dek, 40);
+  const quickTake = draft.quickTake.map((item) => completeSentencePrefix(item, 12));
   const sections = draft.sections.map((section) => ({
     ...section,
     paragraphs: section.paragraphs.map((paragraph) => completeSentencePrefix(paragraph, 80)),
   }));
-  if (!dek || sections.some((section) => section.paragraphs.some((paragraph) => !paragraph))) {
+  if (
+    !dek ||
+    quickTake.some((item) => !item) ||
+    sections.some((section) => section.paragraphs.some((paragraph) => !paragraph))
+  ) {
     return null;
   }
   return {
     ...draft,
     dek,
+    quickTake: quickTake as string[],
     sections: sections.map((section) => ({
       ...section,
       paragraphs: section.paragraphs as string[],
@@ -76,7 +82,7 @@ export async function generateEditorialDraft(
   options: { slot?: string; category?: CategorySlug } = {},
 ) {
   const usage: UsageRecord[] = [];
-  const model = env.OPENAI_EDITORIAL_MODEL;
+  const model = editorialModelName ?? env.ANTHROPIC_EDITORIAL_MODEL;
   const addUsage = (stage: UsageRecord["stage"]) => (record: TokenUsage) => {
     usage.push({ stage, model, ...record });
   };
@@ -130,7 +136,6 @@ export async function generateEditorialDraft(
     const rawPacket = await researchTrend(candidate, {
       model,
       maxOutputTokens: env.EDITORIAL_MAX_OUTPUT_TOKENS,
-      searchContextSize: "low",
       targetCategory: options.category,
       onUsage: addUsage("research"),
     });
