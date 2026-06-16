@@ -7,6 +7,7 @@ import {
   scoreTrendItem,
   selectCategoryCandidates,
   selectPublishingCandidates,
+  summarizePreselection,
 } from "./trend-scoring";
 import type { TrendCluster, TrendItem } from "@/types/content";
 
@@ -188,6 +189,57 @@ describe("trend scoring", () => {
         ],
       }),
     ).toBeNull();
+  });
+
+  it("surfaces a concrete single-outlet development that tokenizes as non-specific, but not a vague spike", () => {
+    // Both clusters share identical engagement metrics and a single Hacker News (factual)
+    // signal; they differ only in whether the headline reports a concrete development.
+    const metrics = { velocity: 50, engagement: 40, credibility: 50, relevance: 60 };
+    const candidates = selectPublishingCandidates(
+      clusterTrends([
+        item({
+          id: "concrete",
+          channel: "hacker-news",
+          title: "Acme launches new robot",
+          ...metrics,
+        }),
+        item({
+          id: "vague",
+          channel: "hacker-news",
+          title: "Discussing modern software philosophy",
+          ...metrics,
+        }),
+      ]),
+      "daily",
+    );
+
+    expect(candidates.map((cluster) => cluster.items[0].id)).toEqual(["concrete"]);
+  });
+
+  it("summarizes why preselection produced its candidates", () => {
+    const metrics = { velocity: 50, engagement: 40, credibility: 50, relevance: 60 };
+    const summary = summarizePreselection(
+      clusterTrends([
+        item({
+          id: "concrete",
+          channel: "hacker-news",
+          title: "Acme launches new robot",
+          ...metrics,
+        }),
+        item({
+          id: "vague",
+          channel: "hacker-news",
+          title: "Discussing modern software philosophy",
+          ...metrics,
+        }),
+      ]),
+      "daily",
+    );
+
+    expect(summary.clusterCount).toBe(2);
+    expect(summary.withFactualSignal).toBe(2);
+    expect(summary.eligibleCount).toBe(1);
+    expect(summary.clearedSelectionScore).toBe(1);
   });
 
   it("filters ranked candidates to the requested category", () => {

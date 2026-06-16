@@ -53,4 +53,28 @@ describe("source policy", () => {
     ]);
     expect(result.passes).toBe(false);
   });
+
+  it("treats a lone company self-announcement as non-independent (routes to talk-around-town)", () => {
+    const result = hasIndependentSources([
+      source("https://openai.com/blog/launch", "primary"),
+    ]);
+    expect(result.passes).toBe(false);
+    expect(result.selfPromotionalOnly).toBe(true);
+  });
+
+  it("treats a lone newswire release as non-independent", () => {
+    const result = hasIndependentSources([
+      source("https://www.businesswire.com/news/launch", "primary"),
+    ]);
+    expect(result.passes).toBe(false);
+  });
+
+  it("passes when an independent outlet corroborates a company announcement", () => {
+    const result = hasIndependentSources([
+      source("https://openai.com/blog/launch", "primary"),
+      source("https://reuters.com/technology/story", "top-tier"),
+    ]);
+    expect(result.passes).toBe(true);
+    expect(result.selfPromotionalOnly).toBe(false);
+  });
 });

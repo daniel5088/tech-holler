@@ -201,7 +201,16 @@ export function clusterTrends(items: TrendItem[]): TrendCluster[] {
       const crossChannelBonus = Math.min(20, (channels - 1) * 10);
       const score = Math.round(Math.min(100, baseScore + crossChannelBonus));
       const discoveryOnly = groupedItems.every((item) => DISCOVERY_ONLY_CHANNELS.has(item.channel));
-      const vaguePenalty = specificNewsSignals === 0 ? 35 : 0;
+      // A factual signal carrying an explicit development verb (announced, launched,
+      // breached, recalled, ...) is concrete reporting, not a vague topic spike, so it
+      // should not also absorb the vague-headline penalty. Without this waiver, genuine
+      // single-outlet developments that merely tokenize as "not specific" (short or
+      // broad-worded headlines) were pushed below the daily selection floor even though
+      // editorialNewsworthiness already credits the same concreteness.
+      const hasConcreteFactualSignal = groupedItems.some(
+        (item) => FACTUAL_CHANNELS.has(item.channel) && looksLikeConcreteDevelopment(item.title),
+      );
+      const vaguePenalty = specificNewsSignals === 0 && !hasConcreteFactualSignal ? 35 : 0;
       const discoveryPenalty = discoveryOnly ? 30 : 0;
       const newsworthiness = Math.max(
         ...groupedItems
@@ -239,6 +248,13 @@ export function clusterTrends(items: TrendItem[]): TrendCluster[] {
     .sort((a, b) => b.selectionScore - a.selectionScore);
 }
 
+// Daily preselection floor. Kept as named constants so the publishing flow can report
+// exactly which threshold a run failed (see summarizePreselection) instead of emitting a
+// misleading "no candidate matched the category" message.
+export const DAILY_MIN_SCORE = 40;
+export const DAILY_MIN_FACTUAL_SIGNALS = 1;
+export const DAILY_MIN_SELECTION_SCORE = 45;
+
 export function selectPublishingCandidates(
   clusters: TrendCluster[],
   type: "daily" | "breaking",
@@ -247,12 +263,38 @@ export function selectPublishingCandidates(
     .filter((cluster) => {
       if (type === "breaking") return cluster.qualifiedForBreaking;
       return (
-        cluster.score >= 40 &&
-        cluster.factualSignals >= 1 &&
-        cluster.selectionScore >= 45
+        cluster.score >= DAILY_MIN_SCORE &&
+        cluster.factualSignals >= DAILY_MIN_FACTUAL_SIGNALS &&
+        cluster.selectionScore >= DAILY_MIN_SELECTION_SCORE
       );
     })
     .sort((left, right) => right.selectionScore - left.selectionScore);
+}
+
+// Diagnostic breakdown of why daily preselection produced (or did not produce) candidates.
+// Recorded into job_runs so an empty result is explained by the real cause — no factual
+// signals this sweep, scores too low, or the selection floor — rather than guessed at.
+export function summarizePreselection(
+  clusters: TrendCluster[],
+  type: "daily" | "breaking" = "daily",
+) {
+  const eligible = selectPublishingCandidates(clusters, type);
+  return {
+    clusterCount: clusters.length,
+    withFactualSignal: clusters.filter((cluster) => cluster.factualSignals >= DAILY_MIN_FACTUAL_SIGNALS).length,
+    clearedScore: clusters.filter((cluster) => cluster.score >= DAILY_MIN_SCORE).length,
+    clearedSelectionScore: clusters.filter((cluster) => cluster.selectionScore >= DAILY_MIN_SELECTION_SCORE).length,
+    eligibleCount: eligible.length,
+    topClusters: [...clusters]
+      .sort((left, right) => right.selectionScore - left.selectionScore)
+      .slice(0, 3)
+      .map((cluster) => ({
+        label: cluster.label,
+        score: cluster.score,
+        factualSignals: cluster.factualSignals,
+        selectionScore: cluster.selectionScore,
+      })),
+  };
 }
 
 export function classifyTrendCategory(cluster: TrendCluster): CategorySlug | null {
