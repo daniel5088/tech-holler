@@ -206,7 +206,8 @@ export async function generateEditorialDraft(
           "A previous draft trailed off mid-clause. Ensure every title, dek, quick-take item, heading, and paragraph is a complete, grammatical sentence that ends with terminal punctuation.";
         lastBlock = {
           reason: "Draft contains an incomplete dek or paragraph",
-          details: { candidate: candidateRef },
+          // The unnormalized draft is preserved so the truncated field is inspectable.
+          details: { candidate: candidateRef, draft: rawDraft },
         };
         continue;
       }
@@ -220,7 +221,7 @@ export async function generateEditorialDraft(
             : "The draft must use editorialMode 'reported' and preserve the supplied uncertainty note.";
         lastBlock = {
           reason: "Editorial mode or label mismatch",
-          details: { candidate: candidateRef },
+          details: { candidate: candidateRef, draft: normalized },
         };
         continue;
       }
@@ -231,7 +232,7 @@ export async function generateEditorialDraft(
           "The draft reused source phrasing too closely. Use substantially different sentence structure and wording without changing the facts.";
         lastBlock = {
           reason: "Potential source phrase reuse detected",
-          details: { candidate: candidateRef },
+          details: { candidate: candidateRef, draft: normalized },
         };
         continue;
       }
@@ -249,13 +250,22 @@ export async function generateEditorialDraft(
         return finish("blocked", {
           reason: "Moderation gate failed",
           candidate: candidateRef,
+          draft: normalized,
         });
       }
       if (!verification.passes) {
         repairFeedback = verification.report;
+        // Persist a self-contained replay unit: re-running verifyDraft(packet, draft)
+        // against a future VERIFICATION_SYSTEM_PROMPT and comparing to the stored
+        // report enables A/B calibration without re-generating the draft (see F5 audit).
         lastBlock = {
           reason: "Verification failed",
-          details: { candidate: candidateRef, verification },
+          details: {
+            candidate: candidateRef,
+            verification,
+            draft: normalized,
+            packet: effectivePacket,
+          },
         };
         continue;
       }
@@ -278,6 +288,7 @@ export async function generateEditorialDraft(
         reason: "Equivalent coverage already exists",
         candidate: { key: candidate.key, label: candidate.label },
         duplicate,
+        draft,
       });
     }
 

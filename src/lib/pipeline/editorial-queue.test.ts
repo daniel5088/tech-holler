@@ -227,6 +227,23 @@ describe("editorial queue cost ceiling", () => {
     );
   });
 
+  it("persists the rejected draft and packet on a verification block for replay", async () => {
+    mocks.verifyDraft.mockResolvedValue({ passes: false, report: "Unsupported claim" });
+
+    await generateEditorialDraft();
+
+    expect(mocks.recordJob).toHaveBeenCalledWith(
+      "editorial-draft",
+      "blocked",
+      expect.objectContaining({
+        reason: "Verification failed",
+        verification: { passes: false, report: "Unsupported claim" },
+        draft: expect.objectContaining({ slug: draft.slug, title: draft.title }),
+        packet: expect.objectContaining({ topic: packet.topic }),
+      }),
+    );
+  });
+
   it("retries once with the verifier report and publishes the repaired draft", async () => {
     mocks.verifyDraft
       .mockImplementationOnce(async (_packet, _draft, options) => {
