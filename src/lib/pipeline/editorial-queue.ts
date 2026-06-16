@@ -26,6 +26,7 @@ import {
   clusterTrends,
   selectCategoryCandidates,
   selectPublishingCandidates,
+  summarizePreselection,
 } from "@/lib/pipeline/trend-scoring";
 import type { ResearchPacket } from "@/lib/pipeline/schemas";
 import type { ArticleDraft } from "@/lib/pipeline/schemas";
@@ -124,11 +125,16 @@ export async function generateEditorialDraft(
       : selectPublishingCandidates(clusters, "daily");
     const [candidate] = candidates;
     if (!candidate) {
+      // A scheduled category slot falls back to the general daily ranking when nothing maps
+      // cleanly to the category (selectCategoryCandidates), so an empty result here always
+      // means zero clusters cleared daily preselection — never a pure category mismatch.
+      // Report the real cause and the preselection breakdown instead of guessing.
       return finish("blocked", {
-        reason: options.category
-          ? "No candidate matched the scheduled category"
-          : "No candidate passed deterministic preselection",
+        reason: "No cluster cleared daily preselection this sweep",
+        scheduledCategory: options.category ?? null,
         signalCount: items.length,
+        clusterCount: clusters.length,
+        preselection: summarizePreselection(clusters, "daily"),
         adapterErrors: errors,
       });
     }

@@ -7,6 +7,14 @@ const mocks = vi.hoisted(() => ({
   clusterTrends: vi.fn(),
   selectCategoryCandidates: vi.fn(),
   selectPublishingCandidates: vi.fn(),
+  summarizePreselection: vi.fn(() => ({
+    clusterCount: 0,
+    withFactualSignal: 0,
+    clearedScore: 0,
+    clearedSelectionScore: 0,
+    eligibleCount: 0,
+    topClusters: [],
+  })),
   researchTrend: vi.fn(),
   writeArticle: vi.fn(),
   verifyDraft: vi.fn(),
@@ -31,6 +39,7 @@ vi.mock("@/lib/pipeline/trend-scoring", () => ({
   clusterTrends: mocks.clusterTrends,
   selectCategoryCandidates: mocks.selectCategoryCandidates,
   selectPublishingCandidates: mocks.selectPublishingCandidates,
+  summarizePreselection: mocks.summarizePreselection,
 }));
 vi.mock("@/lib/pipeline/anthropic", () => ({
   researchTrend: mocks.researchTrend,
@@ -222,7 +231,7 @@ describe("editorial queue cost ceiling", () => {
     [
       "candidate selection",
       () => mocks.selectPublishingCandidates.mockReturnValue([]),
-      "No candidate passed deterministic preselection",
+      "No cluster cleared daily preselection this sweep",
     ],
     [
       "evidence cleanup",
@@ -273,13 +282,13 @@ describe("editorial queue cost ceiling", () => {
     expect(mocks.persistArticle).not.toHaveBeenCalled();
   });
 
-  it("blocks before paid research when no candidate matches the target category", async () => {
+  it("blocks before paid research when no cluster clears preselection for the target category", async () => {
     mocks.selectCategoryCandidates.mockReturnValue([]);
 
     const result = await generateEditorialDraft({ category: "space-science" });
 
     expect(result.status).toBe("blocked");
-    expect(result.reason).toBe("No candidate matched the scheduled category");
+    expect(result.reason).toBe("No cluster cleared daily preselection this sweep");
     expect(mocks.researchTrend).not.toHaveBeenCalled();
     expect(mocks.persistArticle).not.toHaveBeenCalled();
   });
