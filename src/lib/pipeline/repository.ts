@@ -67,24 +67,35 @@ export async function persistArticle(article: Article) {
   });
   if (error) throw error;
 
-  const { error: sourceError } = await supabase.from("article_sources").insert(
-    article.sources.map((source) => ({
-      article_id: article.id,
-      title: source.title,
-      publisher: source.publisher,
-      url: source.url,
-      source_type: source.sourceType,
-      published_at: toTimestamptz(source.publishedAt),
-    })),
-  );
-  if (sourceError) throw sourceError;
+  // supabase-js has no client-side transaction, so the article row is already
+  // committed here. If a dependent insert fails, roll it back (and any partial
+  // children) so a failed publish never leaves an orphaned published article.
+  try {
+    const { error: sourceError } = await supabase.from("article_sources").insert(
+      article.sources.map((source) => ({
+        article_id: article.id,
+        title: source.title,
+        publisher: source.publisher,
+        url: source.url,
+        source_type: source.sourceType,
+        published_at: toTimestamptz(source.publishedAt),
+      })),
+    );
+    if (sourceError) throw sourceError;
 
-  await supabase.from("article_revisions").insert({
-    article_id: article.id,
-    revision_number: 1,
-    reason: "Initial automated publication",
-    snapshot: article,
-  });
+    const { error: revisionError } = await supabase.from("article_revisions").insert({
+      article_id: article.id,
+      revision_number: 1,
+      reason: "Initial automated publication",
+      snapshot: article,
+    });
+    if (revisionError) throw revisionError;
+  } catch (writeError) {
+    await supabase.from("article_revisions").delete().eq("article_id", article.id);
+    await supabase.from("article_sources").delete().eq("article_id", article.id);
+    await supabase.from("articles").delete().eq("id", article.id);
+    throw writeError;
+  }
 }
 
 function articleRow(article: Article, status: "draft" | "published") {
