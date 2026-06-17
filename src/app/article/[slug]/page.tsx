@@ -29,7 +29,8 @@ export async function generateMetadata({
       type: "article",
       publishedTime: article.publishedAt,
       modifiedTime: article.updatedAt,
-      images: article.heroImageUrl ? [article.heroImageUrl] : undefined,
+      // og:image is supplied by the generated opengraph-image route; omit the key
+      // entirely so it isn't suppressed (setting images: undefined would).
     },
   };
 }

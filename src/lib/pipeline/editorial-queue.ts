@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getArticles } from "@/lib/content";
-import { editorialModelName, env } from "@/lib/env";
+import { editorialModelName, env, siteUrl } from "@/lib/env";
+import { postToBluesky } from "@/lib/social/bluesky";
 import { findDuplicate, hasSuspiciousPhraseReuse } from "@/lib/pipeline/deduplication";
 import {
   moderateDraft,
@@ -36,6 +37,12 @@ type UsageRecord = TokenUsage & {
   stage: "research" | "draft" | "verification";
   model: string;
 };
+
+// At most two write→verify attempts per run (original plus one bounded repair),
+// and research may also re-ask once on a parse miss. The ceiling is 6 model calls
+// (2 research + 2 draft + 2 verify), reported as callLimit for cost transparency.
+const MAX_DRAFT_ATTEMPTS = 2;
+const CALL_LIMIT = 2 + MAX_DRAFT_ATTEMPTS * 2;
 
 function readingTime(sections: { paragraphs: string[] }[]) {
   const words = sections.flatMap((section) => section.paragraphs).join(" ").split(/\s+/).length;
@@ -105,7 +112,7 @@ export async function generateEditorialDraft(
       category: options.category,
       ...details,
       model,
-      callLimit: 3,
+      callLimit: CALL_LIMIT,
       imageGeneration: false,
       maxOutputTokensPerGeneration: env.EDITORIAL_MAX_OUTPUT_TOKENS,
       usage: usageSummary(),
@@ -178,56 +185,98 @@ export async function generateEditorialDraft(
       });
     }
 
-    const rawDraft = await writeArticle(effectivePacket, false, undefined, {
-      model,
-      maxOutputTokens: env.EDITORIAL_MAX_OUTPUT_TOKENS,
-      onUsage: addUsage("draft"),
-    });
-    const draft = normalizeDraftCompleteness(rawDraft);
-    if (!draft) {
-      return finish("blocked", {
-        reason: "Draft contains an incomplete dek or paragraph",
-        candidate: { key: candidate.key, label: candidate.label },
-      });
-    }
-    const talkLabelInvalid =
-      editorialMode === "talk-around-town" &&
-      (!draft.title.startsWith("Talk Around Town:") || draft.confidence !== "low");
-    if (draft.editorialMode !== editorialMode || talkLabelInvalid) {
-      return finish("blocked", {
-        reason: "Editorial mode or label mismatch",
-        candidate: { key: candidate.key, label: candidate.label },
-      });
-    }
+    // Bounded retry: a single rejection no longer wastes the whole run. On a
+    // writer-fixable defect (truncated field, label/mode slip, source phrase
+    // reuse, or a failed verification) we feed the specific defect back as
+    // repairFeedback and rewrite once more. Moderation and duplicate detection
+    // stay hard blocks — they are not corrected by rewriting the same packet.
+    const candidateRef = { key: candidate.key, label: candidate.label };
+    let draft: ArticleDraft | null = null;
+    let repairFeedback: string | undefined;
+    let lastBlock: { reason: string; details: Record<string, unknown> } | null = null;
 
-    const draftText = draft.sections.flatMap((section) => section.paragraphs).join("\n");
-    if (hasSuspiciousPhraseReuse(draftText, effectivePacket.sourceSnippets)) {
-      return finish("blocked", {
-        reason: "Potential source phrase reuse detected",
-        candidate: { key: candidate.key, label: candidate.label },
-      });
-    }
-
-    const [verification, passesModeration] = await Promise.all([
-      verifyDraft(effectivePacket, draft, {
+    for (let attempt = 1; attempt <= MAX_DRAFT_ATTEMPTS; attempt += 1) {
+      const rawDraft = await writeArticle(effectivePacket, false, repairFeedback, {
         model,
-        maxOutputTokens: 800,
-        onUsage: addUsage("verification"),
-      }),
-      moderateDraft(draft),
-    ]);
-    if (!verification.passes) {
-      return finish("blocked", {
-        reason: "Verification failed",
-        candidate: { key: candidate.key, label: candidate.label },
-        verification,
+        maxOutputTokens: env.EDITORIAL_MAX_OUTPUT_TOKENS,
+        onUsage: addUsage("draft"),
       });
+      const normalized = normalizeDraftCompleteness(rawDraft);
+      if (!normalized) {
+        repairFeedback =
+          "A previous draft trailed off mid-clause. Ensure every title, dek, quick-take item, heading, and paragraph is a complete, grammatical sentence that ends with terminal punctuation.";
+        lastBlock = {
+          reason: "Draft contains an incomplete dek or paragraph",
+          // The unnormalized draft is preserved so the truncated field is inspectable.
+          details: { candidate: candidateRef, draft: rawDraft },
+        };
+        continue;
+      }
+      const talkLabelInvalid =
+        editorialMode === "talk-around-town" &&
+        (!normalized.title.startsWith("Talk Around Town:") || normalized.confidence !== "low");
+      if (normalized.editorialMode !== editorialMode || talkLabelInvalid) {
+        repairFeedback =
+          editorialMode === "talk-around-town"
+            ? "The draft must use editorialMode 'talk-around-town', low confidence, a title beginning exactly with 'Talk Around Town:', and the supplied uncertainty note."
+            : "The draft must use editorialMode 'reported' and preserve the supplied uncertainty note.";
+        lastBlock = {
+          reason: "Editorial mode or label mismatch",
+          details: { candidate: candidateRef, draft: normalized },
+        };
+        continue;
+      }
+
+      const draftText = normalized.sections.flatMap((section) => section.paragraphs).join("\n");
+      if (hasSuspiciousPhraseReuse(draftText, effectivePacket.sourceSnippets)) {
+        repairFeedback =
+          "The draft reused source phrasing too closely. Use substantially different sentence structure and wording without changing the facts.";
+        lastBlock = {
+          reason: "Potential source phrase reuse detected",
+          details: { candidate: candidateRef, draft: normalized },
+        };
+        continue;
+      }
+
+      const [verification, passesModeration] = await Promise.all([
+        verifyDraft(effectivePacket, normalized, {
+          model,
+          maxOutputTokens: 800,
+          onUsage: addUsage("verification"),
+        }),
+        moderateDraft(normalized),
+      ]);
+      if (!passesModeration) {
+        // Not writer-fixable by re-prompting the same packet — hard block now.
+        return finish("blocked", {
+          reason: "Moderation gate failed",
+          candidate: candidateRef,
+          draft: normalized,
+        });
+      }
+      if (!verification.passes) {
+        repairFeedback = verification.report;
+        // Persist a self-contained replay unit: re-running verifyDraft(packet, draft)
+        // against a future VERIFICATION_SYSTEM_PROMPT and comparing to the stored
+        // report enables A/B calibration without re-generating the draft (see F5 audit).
+        lastBlock = {
+          reason: "Verification failed",
+          details: {
+            candidate: candidateRef,
+            verification,
+            draft: normalized,
+            packet: effectivePacket,
+          },
+        };
+        continue;
+      }
+
+      draft = normalized;
+      break;
     }
-    if (!passesModeration) {
-      return finish("blocked", {
-        reason: "Moderation gate failed",
-        candidate: { key: candidate.key, label: candidate.label },
-      });
+
+    if (!draft) {
+      return finish("blocked", { reason: lastBlock!.reason, ...lastBlock!.details });
     }
 
     const existingHeadlines = [
@@ -240,6 +289,7 @@ export async function generateEditorialDraft(
         reason: "Equivalent coverage already exists",
         candidate: { key: candidate.key, label: candidate.label },
         duplicate,
+        draft,
       });
     }
 
@@ -273,18 +323,46 @@ export async function generateEditorialDraft(
 
     await persistArticle(article);
 
+    // Best-effort social distribution: postToBluesky never throws and no-ops
+    // when credentials are absent, so it can't affect publication.
+    const social = await postToBluesky({
+      title: article.title,
+      dek: article.dek,
+      url: `${siteUrl}/article/${article.slug}`,
+      imageUrl: `${siteUrl}/article/${article.slug}/opengraph-image`,
+    });
+
     return finish(
       "completed",
       {
         article: { id: article.id, slug: article.slug, title: article.title },
         candidate: { key: candidate.key, label: candidate.label },
+        social,
         adapterErrors: errors,
       },
       "published",
     );
   } catch (error) {
+    // Surface non-Error throws (e.g. Supabase PostgrestError, a plain object with
+    // message/code/details/hint) instead of collapsing them to a generic string —
+    // otherwise failed runs hide the actual database/API cause.
+    const asObject = error && typeof error === "object" ? (error as Record<string, unknown>) : null;
+    const reason =
+      error instanceof Error
+        ? error.message
+        : asObject && typeof asObject.message === "string"
+          ? asObject.message
+          : "Editorial draft generation failed";
     return finish("failed", {
-      reason: error instanceof Error ? error.message : "Editorial draft generation failed",
+      reason,
+      errorDetail: asObject
+        ? {
+            message: asObject.message ?? null,
+            code: asObject.code ?? null,
+            details: asObject.details ?? null,
+            hint: asObject.hint ?? null,
+          }
+        : null,
     });
   }
 }

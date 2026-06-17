@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
@@ -21,6 +20,16 @@ type RequestOptions = {
 };
 
 const RESEARCH_PACKET_SHAPE = JSON.stringify(z.toJSONSchema(researchPacketSchema));
+const ARTICLE_DRAFT_SHAPE = JSON.stringify(z.toJSONSchema(articleDraftSchema));
+
+// The research desk hand-writes JSON alongside web_search (structured output and
+// tools don't combine), so it occasionally emits invalid JSON — typically an
+// unescaped quote inside a verbatim sourceSnippet. Allow one bounded re-ask with
+// the parse error fed back before giving up on an otherwise-good research call.
+const MAX_RESEARCH_ATTEMPTS = 2;
+
+const WRITER_SYSTEM_PROMPT =
+  "Write an original technology article using only the supplied research packet. Preserve editorialMode and uncertaintyNote exactly in meaning. For Talk Around Town, the title must begin exactly with 'Talk Around Town:' and the confidence must be low. The title and dek must signal that this is chatter, a claim, a possibility, or analysis rather than settled news. Include clearly separated sections covering what is being said, what is actually known, what remains unverified, and the publication's analysis. Keep every uncertain assertion attributed each time it appears. Any claim that originates from a company announcement, press release, vendor blog, or the subject's own marketing, or whose packet claim agreement is not 'confirmed', must be explicitly attributed every time it appears, including in the title, dek, and quick-take items, using phrasing such as 'the company says', 'according to <source>', or '<company> claims'. Never restate such a self-reported claim as the publication's own settled fact. Capability, product, or strategy descriptions from the announcer (for example 'platform', 'stack', 'portfolio', or 'expanding into' language) must be framed as that company's own description rather than as established fact. Thoughts and possible implications must be labeled as analysis, not reporting. For reported articles, use the normal sourced-news structure. Use a heavy comedic Alabama redneck narrator with colorful rural analogies and occasional mild non-targeted profanity. Analogies must be unmistakably figurative and must not imply new facts. Never use slurs, phonetic misspellings that harm readability, fabricated quotations, or demeaning stereotypes. Preserve names, figures, technical terms, attribution, uncertainty, and factual meaning exactly. Write the dek as one or two short sentences totaling no more than 35 words. Respect every field length limit: the title at most 130 characters, the dek at most 260 characters, each of the exactly three quick-take items a single complete sentence of at most 240 characters, each heading at most 100 characters, and each paragraph at most 1600 characters. Keep attribution concise so quick-take items stay within the limit. Every title, dek, quick-take item, heading, and paragraph must be complete and grammatical, and every dek, quick-take item, and paragraph must end with terminal punctuation. Never trail off or end a field mid-clause. Never mimic source wording. Never reproduce more than seven consecutive words verbatim from any source, snippet, quotation, headline, slogan, or press release; paraphrase every claim in your own words with attribution. Keep any unavoidable direct quotation to a short fragment of a few words, and paraphrase the substance of any longer quote, title, or session name rather than copying it. The hero image prompt must request a clearly editorial, non-photorealistic illustration with no logos, text, or deceptive depiction of a real event.";
 
 export const VERIFICATION_SYSTEM_PROMPT =
   "Audit the draft against the research packet and its editorialMode. " +
@@ -80,37 +89,105 @@ function recordOpenAiUsage(
   });
 }
 
-// Anthropic structured outputs silently drop unsupported JSON Schema keywords
-// (maxLength, minItems, pattern, ...), so the model is never actually bound to
-// the zod limits, and the web-search research call cannot use structured output
-// at all (citations are incompatible). Both replies are therefore validated and
-// repaired against the schema, extracting the single JSON object from the text.
+// The research call uses the web-search tool, which produces citation-bearing
+// responses that are incompatible with structured-output enforcement, so the
+// packet is requested as a JSON object in the final message and parsed here.
+// Free-text research fields routinely overshoot their max-length caps even
+// though the JSON schema advertises them, and a single overflow would otherwise
+// discard an entire (expensive) web-search research call. Clamp prose fields to
+// a sentence boundary within their cap before validation — a deterministic guard
+// in the same spirit as the draft completeness check.
+export function clampProse(value: unknown, max: number): unknown {
+  if (typeof value !== "string" || value.length <= max) return value;
+  const slice = value.slice(0, max);
+  const lastStop = Math.max(
+    slice.lastIndexOf(". "),
+    slice.lastIndexOf("! "),
+    slice.lastIndexOf("? "),
+  );
+  if (lastStop >= Math.floor(max * 0.6)) return slice.slice(0, lastStop + 1).trim();
+  const lastSpace = slice.lastIndexOf(" ");
+  return (lastSpace > 0 ? slice.slice(0, lastSpace) : slice).trim();
+}
+
 function extractJsonObject(text: string): string | null {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const body = fenced ? fenced[1] : text;
   const start = body.indexOf("{");
   const end = body.lastIndexOf("}");
-  return start === -1 || end === -1 || end < start ? null : body.slice(start, end + 1);
+  if (start === -1 || end === -1 || end < start) return null;
+  return body.slice(start, end + 1);
 }
 
-function safeJsonParse(text: string | null): unknown {
-  if (text === null) return undefined;
+export function parseResearchPacket(
+  text: string,
+): { packet: ResearchPacket } | { packet: null; issues: string } {
+  const body = extractJsonObject(text);
+  if (!body) return { packet: null, issues: "no JSON object found in model output" };
+  let raw: Record<string, unknown>;
   try {
-    return JSON.parse(text);
+    raw = JSON.parse(body) as Record<string, unknown>;
+  } catch (error) {
+    return { packet: null, issues: `invalid JSON: ${error instanceof Error ? error.message : "parse error"}` };
+  }
+  raw.sourceAssessment = clampProse(raw.sourceAssessment, 1500);
+  raw.uncertaintyNote = clampProse(raw.uncertaintyNote, 500);
+  if (Array.isArray(raw.sourceSnippets)) {
+    // Snippets are verbatim excerpts only used for reuse detection; a clamped
+    // prefix still serves that purpose, and dropping too-short ones keeps the
+    // packet valid rather than discarding the whole research call.
+    raw.sourceSnippets = raw.sourceSnippets
+      .map((snippet) => clampProse(snippet, 300))
+      .filter((snippet) => typeof snippet === "string" && snippet.length >= 40);
+  }
+  const parsed = researchPacketSchema.safeParse(raw);
+  if (parsed.success) return { packet: parsed.data };
+  return {
+    packet: null,
+    issues: parsed.error.issues
+      .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+      .join("; "),
+  };
+}
+
+// The model overshoots free-text field caps even when the schema advertises
+// them; with structured-output .parse() such an overflow throws and discards
+// the whole writer call (bypassing the bounded retry). Parse manually and clamp
+// each capped string to a sentence boundary within its limit before validation.
+function clampDraft(raw: Record<string, unknown>): Record<string, unknown> {
+  raw.title = clampProse(raw.title, 130);
+  raw.dek = clampProse(raw.dek, 260);
+  raw.heroImageAlt = clampProse(raw.heroImageAlt, 180);
+  raw.heroImagePrompt = clampProse(raw.heroImagePrompt, 700);
+  raw.uncertaintyNote = clampProse(raw.uncertaintyNote, 500);
+  if (Array.isArray(raw.quickTake)) {
+    raw.quickTake = raw.quickTake.map((item) => clampProse(item, 240));
+  }
+  if (Array.isArray(raw.sections)) {
+    raw.sections = raw.sections.map((section) => {
+      if (section && typeof section === "object") {
+        const sec = section as Record<string, unknown>;
+        sec.heading = clampProse(sec.heading, 100);
+        if (Array.isArray(sec.paragraphs)) {
+          sec.paragraphs = sec.paragraphs.map((paragraph) => clampProse(paragraph, 1600));
+        }
+      }
+      return section;
+    });
+  }
+  return raw;
+}
+
+export function parseArticleDraft(text: string): ArticleDraft | null {
+  const body = extractJsonObject(text);
+  if (!body) return null;
+  try {
+    const raw = clampDraft(JSON.parse(body) as Record<string, unknown>);
+    return articleDraftSchema.parse(raw);
   } catch {
-    return undefined;
+    return null;
   }
 }
-
-function describeIssues(error: z.ZodError): string {
-  return error.issues
-    .slice(0, 8)
-    .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
-    .join("; ");
-}
-
-const WRITING_SYSTEM_PROMPT =
-  "Write an original technology article using only the supplied research packet. Preserve editorialMode and uncertaintyNote exactly in meaning. For Talk Around Town, the title must begin exactly with 'Talk Around Town:' and the confidence must be low. The title and dek must signal that this is chatter, a claim, a possibility, or analysis rather than settled news. Include clearly separated sections covering what is being said, what is actually known, what remains unverified, and the publication's analysis. Keep every uncertain assertion attributed each time it appears. Any claim that originates from a company announcement, press release, vendor blog, or the subject's own marketing, or whose packet claim agreement is not 'confirmed', must be explicitly attributed every time it appears, including in the title, dek, and quick-take items, using phrasing such as 'the company says', 'according to <source>', or '<company> claims'. Never restate such a self-reported claim as the publication's own settled fact. Capability, product, or strategy descriptions from the announcer (for example 'platform', 'stack', 'portfolio', or 'expanding into' language) must be framed as that company's own description rather than as established fact. Thoughts and possible implications must be labeled as analysis, not reporting. For reported articles, use the normal sourced-news structure. Use a heavy comedic Alabama redneck narrator with colorful rural analogies and occasional mild non-targeted profanity. Analogies must be unmistakably figurative and must not imply new facts. Never use slurs, phonetic misspellings that harm readability, fabricated quotations, or demeaning stereotypes. Preserve names, figures, technical terms, attribution, uncertainty, and factual meaning exactly. Write the dek as one or two short sentences totaling no more than 35 words. Every title, dek, quick-take item, heading, and paragraph must be complete and grammatical, and every dek, quick-take item, and paragraph must end with terminal punctuation. Never trail off or end a field mid-clause. Never mimic source wording. The hero image prompt must request a clearly editorial, non-photorealistic illustration with no logos, text, or deceptive depiction of a real event.";
 
 export async function researchTrend(
   cluster: TrendCluster,
@@ -165,6 +242,8 @@ export async function researchTrend(
     url: item.url,
   }));
 
+  let researchIssues = "";
+  for (let attempt = 1; attempt <= MAX_RESEARCH_ATTEMPTS; attempt += 1) {
   const response = await anthropicClient().messages.create({
     model: options.model ?? env.ANTHROPIC_WRITING_MODEL,
     max_tokens: options.maxOutputTokens ?? 8000,
@@ -189,35 +268,21 @@ export async function researchTrend(
           options.targetCategory
             ? `\nThis is for the ${options.targetCategory} desk. Return that exact category or decline to produce a packet.`
             : ""
-        }\nCluster score: ${cluster.score}\nIndependent channels: ${cluster.channels}\nSignals: ${JSON.stringify(signalSummary)}`,
+        }\nCluster score: ${cluster.score}\nIndependent channels: ${cluster.channels}\nSignals: ${JSON.stringify(signalSummary)}${
+          attempt > 1
+            ? `\nYour previous response could not be parsed (${researchIssues}). Reply with ONLY one valid JSON object matching the schema, escaping every quotation mark and newline inside string values and keeping each field within its length limit.`
+            : ""
+        }`,
       },
     ],
   });
 
   recordUsage(response.usage, options.onUsage);
-  let candidate = collectText(response.content);
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const value = safeJsonParse(extractJsonObject(candidate));
-    const result = value === undefined ? null : researchPacketSchema.safeParse(value);
-    if (result?.success) return result.data;
-    if (attempt === 3) throw new Error("Research model returned no valid structured packet");
-
-    const reason = result ? describeIssues(result.error) : "the reply did not contain a single JSON object";
-    const repair = await anthropicClient().messages.create({
-      model: options.model ?? env.ANTHROPIC_WRITING_MODEL,
-      max_tokens: options.maxOutputTokens ?? 8000,
-      system:
-        "You output only a single corrected JSON object, with no other text, honoring every minimum and maximum length and item-count limit, matching this JSON schema: " +
-        RESEARCH_PACKET_SHAPE,
-      messages: [{
-        role: "user",
-        content: `This research JSON was rejected (${reason}). Return only the corrected JSON, keeping the same factual content and trimming any field that exceeds its limit.\n\n${candidate}`,
-      }],
-    });
-    recordUsage(repair.usage, options.onUsage);
-    candidate = collectText(repair.content);
+  const result = parseResearchPacket(collectText(response.content));
+  if (result.packet) return result.packet;
+  researchIssues = result.issues;
   }
-  throw new Error("Research model returned no valid structured packet");
+  throw new Error(`Research model returned no structured packet — ${researchIssues}`);
 }
 
 export async function writeArticle(
@@ -234,8 +299,7 @@ export async function writeArticle(
       input: [
         {
           role: "system",
-          content:
-            "Write an original technology article using only the supplied research packet. Preserve editorialMode and uncertaintyNote exactly in meaning. For Talk Around Town, the title must begin exactly with 'Talk Around Town:' and the confidence must be low. The title and dek must signal that this is chatter, a claim, a possibility, or analysis rather than settled news. Include clearly separated sections covering what is being said, what is actually known, what remains unverified, and the publication's analysis. Keep every uncertain assertion attributed each time it appears. Any claim that originates from a company announcement, press release, vendor blog, or the subject's own marketing, or whose packet claim agreement is not 'confirmed', must be explicitly attributed every time it appears, including in the title, dek, and quick-take items, using phrasing such as 'the company says', 'according to <source>', or '<company> claims'. Never restate such a self-reported claim as the publication's own settled fact. Capability, product, or strategy descriptions from the announcer (for example 'platform', 'stack', 'portfolio', or 'expanding into' language) must be framed as that company's own description rather than as established fact. Thoughts and possible implications must be labeled as analysis, not reporting. For reported articles, use the normal sourced-news structure. Use a heavy comedic Alabama redneck narrator with colorful rural analogies and occasional mild non-targeted profanity. Analogies must be unmistakably figurative and must not imply new facts. Never use slurs, phonetic misspellings that harm readability, fabricated quotations, or demeaning stereotypes. Preserve names, figures, technical terms, attribution, uncertainty, and factual meaning exactly. Write the dek as one or two short sentences totaling no more than 35 words. Every title, dek, quick-take item, heading, and paragraph must be complete and grammatical, and every dek, quick-take item, and paragraph must end with terminal punctuation. Never trail off or end a field mid-clause. Never mimic source wording. The hero image prompt must request a clearly editorial, non-photorealistic illustration with no logos, text, or deceptive depiction of a real event.",
+          content: WRITER_SYSTEM_PROMPT,
         },
         {
           role: "user",
@@ -253,35 +317,29 @@ export async function writeArticle(
     return response.output_parsed;
   }
 
-  let feedback = repairFeedback;
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const response = await anthropicClient().messages.create({
-      model: options.model ?? env.ANTHROPIC_WRITING_MODEL,
-      max_tokens: options.maxOutputTokens ?? 8000,
-      output_config: { format: zodOutputFormat(articleDraftSchema) },
-      system: WRITING_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: `Write the ${isBreaking ? "breaking" : "scheduled"} article from this packet: ${JSON.stringify(packet)}${
-            feedback
-              ? `\nA previous draft was rejected. Rewrite it completely and fix this issue without weakening attribution or adding facts: ${feedback}`
-              : ""
-          }`,
-        },
-      ],
-    });
-    recordUsage(response.usage, options.onUsage);
+  const response = await anthropicClient().messages.create({
+    model: options.model ?? env.ANTHROPIC_WRITING_MODEL,
+    max_tokens: options.maxOutputTokens ?? 8000,
+    system:
+      WRITER_SYSTEM_PROMPT +
+      " Reply with ONLY a single JSON object and no other text, matching this JSON schema: " +
+      ARTICLE_DRAFT_SHAPE,
+    messages: [
+      {
+        role: "user",
+        content: `Write the ${isBreaking ? "breaking" : "scheduled"} article from this packet: ${JSON.stringify(packet)}${
+          repairFeedback
+            ? `\nA previous draft was rejected. Rewrite it completely and fix this issue without weakening attribution or adding facts: ${repairFeedback}`
+            : ""
+        }`,
+      },
+    ],
+  });
 
-    const value = safeJsonParse(extractJsonObject(collectText(response.content)));
-    const result = value === undefined ? null : articleDraftSchema.safeParse(value);
-    if (result?.success) return result.data;
-    if (attempt === 3) throw new Error("Writing model returned no valid structured article");
-
-    const reason = result ? describeIssues(result.error) : "the reply did not contain a single JSON object";
-    feedback = `${repairFeedback ? `${repairFeedback} ` : ""}The previous draft JSON was invalid (${reason}). Honor every minimum and maximum length and item-count limit exactly.`;
-  }
-  throw new Error("Writing model returned no valid structured article");
+  recordUsage(response.usage, options.onUsage);
+  const draft = parseArticleDraft(collectText(response.content));
+  if (!draft) throw new Error("Writing model returned no structured article");
+  return draft;
 }
 
 export async function verifyDraft(

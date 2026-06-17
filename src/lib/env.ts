@@ -23,6 +23,9 @@ const envSchema = z.object({
   EDITORIAL_DRAFT_TOKEN: z.string().optional(),
   PUBLISHING_ENABLED: z.enum(["true", "false"]).default("false"),
   SOURCE_ALLOWLIST: z.string().optional(),
+  BLUESKY_IDENTIFIER: z.string().optional(),
+  BLUESKY_APP_PASSWORD: z.string().optional(),
+  BLUESKY_SERVICE_URL: z.string().default("https://bsky.social"),
 });
 
 export const env = envSchema.parse({
@@ -46,6 +49,9 @@ export const env = envSchema.parse({
   EDITORIAL_DRAFT_TOKEN: process.env.EDITORIAL_DRAFT_TOKEN,
   PUBLISHING_ENABLED: process.env.PUBLISHING_ENABLED,
   SOURCE_ALLOWLIST: process.env.SOURCE_ALLOWLIST,
+  BLUESKY_IDENTIFIER: process.env.BLUESKY_IDENTIFIER,
+  BLUESKY_APP_PASSWORD: process.env.BLUESKY_APP_PASSWORD,
+  BLUESKY_SERVICE_URL: process.env.BLUESKY_SERVICE_URL,
 });
 
 export const siteUrl = env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -56,6 +62,9 @@ export const siteRedirectUrl = (path: string, origin = siteUrl) => new URL(path,
 export const publishingEnabled = env.PUBLISHING_ENABLED === "true";
 export const supabaseConfigured = Boolean(
   env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY,
+);
+export const blueskyConfigured = Boolean(
+  env.BLUESKY_IDENTIFIER && env.BLUESKY_APP_PASSWORD,
 );
 export const hasAnthropic = Boolean(env.ANTHROPIC_API_KEY);
 export const hasOpenAI = Boolean(env.OPENAI_API_KEY);
