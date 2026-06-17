@@ -206,7 +206,7 @@ describe("editorial queue cost ceiling", () => {
           slug: draft.slug,
           title: draft.title,
         }),
-        callLimit: 5,
+        callLimit: 6,
         imageGeneration: false,
         usage: expect.objectContaining({ calls: 3, totalTokens: 1510 }),
       }),

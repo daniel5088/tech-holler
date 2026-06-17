@@ -37,11 +37,11 @@ type UsageRecord = TokenUsage & {
   model: string;
 };
 
-// At most two write→verify attempts per run: the original plus one bounded
-// repair. Combined with the single research call the ceiling is 5 model calls
-// (1 research + 2 draft + 2 verify), reported as callLimit for cost transparency.
+// At most two write→verify attempts per run (original plus one bounded repair),
+// and research may also re-ask once on a parse miss. The ceiling is 6 model calls
+// (2 research + 2 draft + 2 verify), reported as callLimit for cost transparency.
 const MAX_DRAFT_ATTEMPTS = 2;
-const CALL_LIMIT = 1 + MAX_DRAFT_ATTEMPTS * 2;
+const CALL_LIMIT = 2 + MAX_DRAFT_ATTEMPTS * 2;
 
 function readingTime(sections: { paragraphs: string[] }[]) {
   const words = sections.flatMap((section) => section.paragraphs).join(" ").split(/\s+/).length;
@@ -332,8 +332,26 @@ export async function generateEditorialDraft(
       "published",
     );
   } catch (error) {
+    // Surface non-Error throws (e.g. Supabase PostgrestError, a plain object with
+    // message/code/details/hint) instead of collapsing them to a generic string —
+    // otherwise failed runs hide the actual database/API cause.
+    const asObject = error && typeof error === "object" ? (error as Record<string, unknown>) : null;
+    const reason =
+      error instanceof Error
+        ? error.message
+        : asObject && typeof asObject.message === "string"
+          ? asObject.message
+          : "Editorial draft generation failed";
     return finish("failed", {
-      reason: error instanceof Error ? error.message : "Editorial draft generation failed",
+      reason,
+      errorDetail: asObject
+        ? {
+            message: asObject.message ?? null,
+            code: asObject.code ?? null,
+            details: asObject.details ?? null,
+            hint: asObject.hint ?? null,
+          }
+        : null,
     });
   }
 }

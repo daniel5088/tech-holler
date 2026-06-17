@@ -3,6 +3,15 @@ import { mapArticle, type ArticleRow } from "@/lib/content";
 import type { Article, TrendCluster, TrendItem } from "@/types/content";
 import type { ResearchPacket } from "@/lib/pipeline/schemas";
 
+// Source publishedAt is only schema-validated as a string, so the research model
+// can emit a partial date ("2026-06") that a timestamptz column rejects (22007).
+// Coerce to a valid ISO timestamp, or null when it cannot be parsed.
+export function toTimestamptz(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
 export async function persistTrendSweep(items: TrendItem[], clusters: TrendCluster[], errors: unknown[]) {
   const supabase = getServiceSupabase();
   if (!supabase) return { persisted: false, reason: "Supabase not configured" };
@@ -65,7 +74,7 @@ export async function persistArticle(article: Article) {
       publisher: source.publisher,
       url: source.url,
       source_type: source.sourceType,
-      published_at: source.publishedAt,
+      published_at: toTimestamptz(source.publishedAt),
     })),
   );
   if (sourceError) throw sourceError;
@@ -157,7 +166,7 @@ export async function publishEditorialDraft(id: string) {
       publisher: source.publisher,
       url: source.url,
       source_type: source.sourceType,
-      published_at: source.publishedAt,
+      published_at: toTimestamptz(source.publishedAt),
     })),
     { onConflict: "article_id,url", ignoreDuplicates: true },
   );
@@ -239,7 +248,7 @@ export async function updatePublishedArticle(article: Article) {
       publisher: source.publisher,
       url: source.url,
       source_type: source.sourceType,
-      published_at: source.publishedAt,
+      published_at: toTimestamptz(source.publishedAt),
     })),
   );
   if (sourceError) throw sourceError;
