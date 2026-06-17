@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Menu, Radio, Search } from "lucide-react";
+import { Radio, Search } from "lucide-react";
 import { categories, SITE_NAME } from "@/data/site";
+import { MobileMenu } from "@/components/mobile-menu";
 
 export function SiteHeader() {
   return (
@@ -32,9 +33,7 @@ export function SiteHeader() {
           <Link href="/search" className="icon-button" aria-label="Search">
             <Search size={19} />
           </Link>
-          <Link href="/latest" className="icon-button mobile-menu" aria-label="Browse stories">
-            <Menu size={20} />
-          </Link>
+          <MobileMenu />
         </div>
       </div>
       <nav className="category-strip shell" aria-label="Story categories">
