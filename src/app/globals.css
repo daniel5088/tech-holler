@@ -803,6 +803,80 @@ textarea {
   justify-content: center;
 }
 
+.article-share {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.article-share-label {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.article-share-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 13px;
+  border: 1px solid var(--ink);
+  background: var(--white);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.08s ease,
+    color 0.08s ease;
+}
+
+.share-button-icon {
+  width: 40px;
+  padding: 0;
+}
+
+.share-button svg {
+  display: block;
+}
+
+.share-button:hover,
+.share-button:focus-visible {
+  transform: translate(-2px, -2px);
+  box-shadow: 3px 3px 0 var(--rust);
+  background: var(--ink);
+  color: var(--white);
+  outline: none;
+}
+
+.share-button.copied,
+.share-button.copied:hover {
+  transform: none;
+  box-shadow: none;
+  background: var(--cyan);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
 .article-header h1 {
   font-size: clamp(48px, 6.8vw, 88px);
   line-height: 0.95;

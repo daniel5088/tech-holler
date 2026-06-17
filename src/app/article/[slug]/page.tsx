@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Clock, ExternalLink, RefreshCw, ShieldCheck } from "lucide-react";
 import { ArticleArt } from "@/components/article-art";
+import { ShareBar } from "@/components/share-bar";
 import { getCategory, SITE_NAME } from "@/data/site";
 import { getArticleBySlug } from "@/lib/content";
 import { publicUrl, siteUrl } from "@/lib/env";
@@ -43,6 +44,7 @@ export default async function ArticlePage({
 
   const category = getCategory(article.category);
   const isTalkAroundTown = article.editorialMode === "talk-around-town";
+  const shareUrl = `${siteUrl}/article/${article.slug}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": isTalkAroundTown ? "Article" : "NewsArticle",
@@ -96,6 +98,7 @@ export default async function ArticlePage({
             </span>
           </div>
         </div>
+        <ShareBar url={shareUrl} title={article.title} summary={article.dek} />
       </header>
 
       <div className="shell article-hero">
