@@ -16,6 +16,11 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
+  alternates: {
+    types: {
+      "application/rss+xml": [{ url: "/rss.xml", title: `${SITE_NAME} RSS` }],
+    },
+  },
   openGraph: {
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
@@ -38,6 +43,32 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([
+              {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                name: SITE_NAME,
+                url: siteUrl,
+                description: SITE_DESCRIPTION,
+                email: "techhollerdan@gmail.com",
+              },
+              {
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                name: SITE_NAME,
+                url: siteUrl,
+                potentialAction: {
+                  "@type": "SearchAction",
+                  target: `${siteUrl}/search?q={search_term_string}`,
+                  "query-input": "required name=search_term_string",
+                },
+              },
+            ]),
+          }}
+        />
         <SiteHeader />
         {children}
         <SiteFooter />

@@ -26,6 +26,9 @@ const envSchema = z.object({
   BLUESKY_IDENTIFIER: z.string().optional(),
   BLUESKY_APP_PASSWORD: z.string().optional(),
   BLUESKY_SERVICE_URL: z.string().default("https://bsky.social"),
+  RESEND_API_KEY: z.string().optional(),
+  NEWSLETTER_FROM_EMAIL: z.string().optional(),
+  NEWSLETTER_REPLY_TO: z.string().optional(),
 });
 
 export const env = envSchema.parse({
@@ -52,6 +55,9 @@ export const env = envSchema.parse({
   BLUESKY_IDENTIFIER: process.env.BLUESKY_IDENTIFIER,
   BLUESKY_APP_PASSWORD: process.env.BLUESKY_APP_PASSWORD,
   BLUESKY_SERVICE_URL: process.env.BLUESKY_SERVICE_URL,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  NEWSLETTER_FROM_EMAIL: process.env.NEWSLETTER_FROM_EMAIL,
+  NEWSLETTER_REPLY_TO: process.env.NEWSLETTER_REPLY_TO,
 });
 
 export const siteUrl = env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -65,6 +71,9 @@ export const supabaseConfigured = Boolean(
 );
 export const blueskyConfigured = Boolean(
   env.BLUESKY_IDENTIFIER && env.BLUESKY_APP_PASSWORD,
+);
+export const newsletterDeliveryConfigured = Boolean(
+  env.RESEND_API_KEY && env.NEWSLETTER_FROM_EMAIL,
 );
 export const hasAnthropic = Boolean(env.ANTHROPIC_API_KEY);
 export const hasOpenAI = Boolean(env.OPENAI_API_KEY);

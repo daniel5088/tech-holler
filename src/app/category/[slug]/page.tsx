@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Rss } from "lucide-react";
 import { ArticleCard } from "@/components/article-card";
 import { getCategory } from "@/data/site";
 import { getArticles } from "@/lib/content";
@@ -14,7 +15,20 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const category = getCategory((await params).slug);
   return category
-    ? { title: category.name, description: category.description }
+    ? {
+        title: category.name,
+        description: category.description,
+        alternates: {
+          types: {
+            "application/rss+xml": [
+              {
+                url: `/category/${category.slug}/rss.xml`,
+                title: `${category.name} RSS`,
+              },
+            ],
+          },
+        },
+      }
     : { title: "Category not found" };
 }
 
@@ -36,6 +50,14 @@ export default async function CategoryPage({
         <span className="eyebrow">THE {category.shortName.toUpperCase()} DESK</span>
         <h1>{category.name}</h1>
         <p>{category.description}</p>
+        <a
+          className="category-feed-link"
+          href={`/category/${category.slug}/rss.xml`}
+          style={{ "--feed-accent": category.accent } as React.CSSProperties}
+        >
+          <Rss size={15} aria-hidden="true" />
+          Subscribe to the {category.shortName} feed
+        </a>
       </header>
       {articles.length ? (
         <div className="listing-grid">

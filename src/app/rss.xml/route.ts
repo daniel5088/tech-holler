@@ -1,45 +1,20 @@
 import { getArticles } from "@/lib/content";
 import { siteUrl } from "@/lib/env";
+import { buildRssFeed } from "@/lib/feeds";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/data/site";
 
 export const dynamic = "force-dynamic";
 
-function escapeXml(value: string) {
-  return value.replace(/[<>&'"]/g, (character) => ({
-    "<": "&lt;",
-    ">": "&gt;",
-    "&": "&amp;",
-    "'": "&apos;",
-    '"': "&quot;",
-  })[character]!);
-}
-
 export async function GET() {
   const articles = await getArticles({ limit: 50 });
-  const items = articles.map((article) => `
-    <item>
-      <title>${escapeXml(article.title)}</title>
-      <description>${escapeXml(article.dek)}</description>
-      <link>${siteUrl}/article/${article.slug}</link>
-      <guid isPermaLink="true">${siteUrl}/article/${article.slug}</guid>
-      <pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate>
-      <category>${escapeXml(article.category)}</category>
-      ${article.editorialMode === "talk-around-town"
-        ? "<category>Talk Around Town</category>"
-        : ""}
-    </item>`).join("");
 
-  const xml = `<?xml version="1.0" encoding="UTF-8" ?>
-<rss version="2.0">
-  <channel>
-    <title>${escapeXml(SITE_NAME)}</title>
-    <description>${escapeXml(SITE_DESCRIPTION)}</description>
-    <link>${siteUrl}</link>
-    <language>en-us</language>
-    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
-    ${items}
-  </channel>
-</rss>`;
+  const xml = buildRssFeed({
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    link: siteUrl,
+    selfUrl: `${siteUrl}/rss.xml`,
+    articles,
+  });
 
   return new Response(xml, {
     headers: {
