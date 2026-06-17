@@ -81,8 +81,14 @@ export default function PrivacyPage() {
         <section>
           <h2>Analytics</h2>
           <p>
-            We may use privacy-respecting analytics to understand aggregate traffic patterns. These
-            tools report trends, not individual identities.
+            We use Google Analytics to understand aggregate traffic patterns. Google Analytics uses
+            cookies and similar identifiers to measure how visitors use the site and may process data
+            such as your IP address. You can opt out of Google Analytics across all websites by
+            installing the{" "}
+            <a href="https://tools.google.com/dlpage/gaoptout" {...externalLink}>
+              Google Analytics Opt-out Browser Add-on
+            </a>
+            .
           </p>
         </section>
         <section>
