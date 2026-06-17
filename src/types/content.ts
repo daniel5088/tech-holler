@@ -53,6 +53,7 @@ export interface Article {
   sections: ArticleSection[];
   sources: ArticleSource[];
   revisionNote?: string;
+  likeCount: number;
 }
 
 export interface TrendItem {

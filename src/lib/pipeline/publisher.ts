@@ -148,6 +148,7 @@ export async function produceArticle(cluster: TrendCluster, isBreaking: boolean)
       : existingArticle
         ? "Updated automatically after a newly verified breaking development."
         : undefined,
+    likeCount: existingArticle?.likeCount ?? 0,
   };
 
   if (existingArticle) {

@@ -22,6 +22,7 @@ export type ArticleRow = {
   sections: Article["sections"];
   sources: Article["sources"];
   revision_note: string | null;
+  like_count: number | null;
   created_at: string;
 };
 
@@ -53,6 +54,7 @@ export function mapArticle(row: ArticleRow): Article {
     sections: row.sections,
     sources: row.sources,
     revisionNote: row.revision_note ?? undefined,
+    likeCount: row.like_count ?? 0,
   };
 }
 
@@ -121,6 +123,28 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     return demoArticles.find((article) => article.slug === slug) ?? null;
   }
   return data ? mapArticle(data as ArticleRow) : null;
+}
+
+/**
+ * Cheap per-device lookup: has the visitor (by hashed device id) already liked
+ * this article? Returns false when Supabase is unavailable.
+ */
+export async function hasViewerLiked(
+  articleId: string,
+  visitorHash: string,
+): Promise<boolean> {
+  const supabase = getServiceSupabase();
+  if (!supabase) return false;
+
+  const { data, error } = await supabase
+    .from("article_likes")
+    .select("id")
+    .eq("article_id", articleId)
+    .eq("visitor_hash", visitorHash)
+    .maybeSingle();
+
+  if (error) return false;
+  return Boolean(data);
 }
 
 export async function getArticleSlugs() {

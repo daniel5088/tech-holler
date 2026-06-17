@@ -319,6 +319,7 @@ export async function generateEditorialDraft(
       revisionNote: editorialMode === "talk-around-town"
         ? `Talk Around Town: ${draft.uncertaintyNote}`
         : undefined,
+      likeCount: 0,
     };
 
     await persistArticle(article);
