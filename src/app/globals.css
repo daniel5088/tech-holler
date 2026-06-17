@@ -1912,6 +1912,127 @@ textarea {
   text-transform: uppercase;
 }
 
+.footer-newsletter {
+  padding-bottom: 40px;
+  margin-bottom: 44px;
+  border-bottom: 1px solid #292f2a;
+}
+
+.newsletter-signup {
+  max-width: 520px;
+}
+
+.newsletter-signup.page {
+  max-width: none;
+}
+
+.newsletter-label {
+  display: block;
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+.newsletter-signup.page .newsletter-label {
+  color: var(--ink);
+}
+
+.newsletter-sub {
+  margin: 6px 0 14px;
+  font-size: 13px;
+  color: #9aa093;
+}
+
+.newsletter-signup.page .newsletter-sub {
+  color: var(--muted);
+}
+
+.newsletter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.newsletter-row input[type="email"] {
+  flex: 1 1 220px;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid #3a403a;
+  background: #fffdf7;
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+}
+
+.newsletter-signup.page .newsletter-row input[type="email"] {
+  border-color: var(--ink);
+}
+
+.newsletter-row button {
+  min-height: 46px;
+  padding: 0 20px;
+  border: 1px solid var(--ink);
+  background: var(--rust);
+  color: #ffffff;
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.newsletter-row button:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.newsletter-row button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.newsletter-hp {
+  position: absolute !important;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.newsletter-message {
+  margin-top: 10px;
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.newsletter-message.success {
+  color: var(--cyan);
+}
+
+.newsletter-message.error {
+  color: #ff8a6b;
+}
+
+.newsletter-signup.page .newsletter-message.success,
+.newsletter-signup.page .newsletter-message.error {
+  color: var(--rust-dark);
+}
+
+.about-newsletter {
+  max-width: 720px;
+  margin: 44px auto 0;
+  padding: 28px;
+  border: 1px solid var(--ink);
+  background: var(--white);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
 .not-found {
   min-height: 65vh;
   display: grid;

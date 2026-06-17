@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { categories, SITE_DESCRIPTION, SITE_NAME } from "@/data/site";
+import { NewsletterSignup } from "@/components/newsletter-signup";
 
 export function SiteFooter() {
   return (
     <footer className="site-footer">
+      <div className="shell footer-newsletter">
+        <NewsletterSignup variant="footer" />
+      </div>
       <div className="shell footer-grid">
         <div>
           <div className="footer-brand">{SITE_NAME}</div>
@@ -25,6 +29,7 @@ export function SiteFooter() {
         </div>
         <div>
           <h2>About</h2>
+          <Link href="/about">About & accountability</Link>
           <Link href="/methodology">Methodology & corrections</Link>
           <Link href="/privacy">Privacy policy</Link>
           <Link href="/rss.xml">RSS feed</Link>
