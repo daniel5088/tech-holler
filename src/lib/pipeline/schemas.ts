@@ -21,7 +21,7 @@ export const researchPacketSchema = z.object({
   topic: z.string(),
   thesis: z.string(),
   editorialMode: z.enum(["reported", "talk-around-town"]),
-  sourceAssessment: z.string().min(30).max(600),
+  sourceAssessment: z.string().min(30).max(1500),
   uncertaintyNote: z.string().min(30).max(500),
   category: z.enum([
     "ai-robotics",
@@ -61,7 +61,7 @@ export const articleDraftSchema = z.object({
   forecastHorizon: z.string().nullable(),
   heroImageAlt: z.string().min(20).max(180),
   heroImagePrompt: z.string().min(30).max(700),
-  quickTake: z.array(z.string().min(12).max(180)).length(3),
+  quickTake: z.array(z.string().min(12).max(240)).length(3),
   sections: z.array(
     z.object({
       heading: z.string().min(4).max(100),

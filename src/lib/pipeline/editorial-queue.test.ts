@@ -206,7 +206,7 @@ describe("editorial queue cost ceiling", () => {
           slug: draft.slug,
           title: draft.title,
         }),
-        callLimit: 3,
+        callLimit: 6,
         imageGeneration: false,
         usage: expect.objectContaining({ calls: 3, totalTokens: 1510 }),
       }),
@@ -225,6 +225,93 @@ describe("editorial queue cost ceiling", () => {
       "blocked",
       expect.objectContaining({ reason: "Verification failed" }),
     );
+  });
+
+  it("persists the rejected draft and packet on a verification block for replay", async () => {
+    mocks.verifyDraft.mockResolvedValue({ passes: false, report: "Unsupported claim" });
+
+    await generateEditorialDraft();
+
+    expect(mocks.recordJob).toHaveBeenCalledWith(
+      "editorial-draft",
+      "blocked",
+      expect.objectContaining({
+        reason: "Verification failed",
+        verification: { passes: false, report: "Unsupported claim" },
+        draft: expect.objectContaining({ slug: draft.slug, title: draft.title }),
+        packet: expect.objectContaining({ topic: packet.topic }),
+      }),
+    );
+  });
+
+  it("retries once with the verifier report and publishes the repaired draft", async () => {
+    mocks.verifyDraft
+      .mockImplementationOnce(async (_packet, _draft, options) => {
+        options.onUsage({ inputTokens: 500, outputTokens: 10, totalTokens: 510 });
+        return { passes: false, report: "Attribute the company's own claim." };
+      })
+      .mockImplementation(async (_packet, _draft, options) => {
+        options.onUsage({ inputTokens: 500, outputTokens: 10, totalTokens: 510 });
+        return { passes: true, report: "PASS" };
+      });
+
+    const result = await generateEditorialDraft();
+
+    expect(result.status).toBe("published");
+    expect(mocks.writeArticle).toHaveBeenCalledTimes(2);
+    expect(mocks.verifyDraft).toHaveBeenCalledTimes(2);
+    // Second write carries the first verifier report as repair feedback.
+    expect(mocks.writeArticle).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      false,
+      "Attribute the company's own claim.",
+      expect.anything(),
+    );
+    expect(mocks.persistArticle).toHaveBeenCalledTimes(1);
+    expect(mocks.recordJob).toHaveBeenCalledWith(
+      "editorial-draft",
+      "completed",
+      expect.objectContaining({ usage: expect.objectContaining({ calls: 5 }) }),
+    );
+  });
+
+  it("blocks after two failed verification attempts and stops retrying", async () => {
+    mocks.verifyDraft.mockResolvedValue({ passes: false, report: "Still unsupported." });
+
+    const result = await generateEditorialDraft();
+
+    expect(result.status).toBe("blocked");
+    expect(result.reason).toBe("Verification failed");
+    expect(mocks.writeArticle).toHaveBeenCalledTimes(2);
+    expect(mocks.verifyDraft).toHaveBeenCalledTimes(2);
+    expect(mocks.persistArticle).not.toHaveBeenCalled();
+  });
+
+  it("does not retry a moderation failure", async () => {
+    mocks.moderateDraft.mockResolvedValue(false);
+
+    const result = await generateEditorialDraft();
+
+    expect(result.status).toBe("blocked");
+    expect(result.reason).toBe("Moderation gate failed");
+    expect(mocks.writeArticle).toHaveBeenCalledTimes(1);
+    expect(mocks.persistArticle).not.toHaveBeenCalled();
+  });
+
+  it("recovers from a truncated first draft by rewriting", async () => {
+    mocks.writeArticle
+      .mockResolvedValueOnce({ ...draft, dek: "Incomplete fragment" })
+      .mockImplementation(async (_packet, _breaking, _feedback, options) => {
+        options.onUsage({ inputTokens: 300, outputTokens: 400, totalTokens: 700 });
+        return draft;
+      });
+
+    const result = await generateEditorialDraft();
+
+    expect(result.status).toBe("published");
+    expect(mocks.writeArticle).toHaveBeenCalledTimes(2);
+    expect(mocks.persistArticle).toHaveBeenCalledTimes(1);
   });
 
   it.each([
