@@ -110,7 +110,7 @@ export default function PrivacyPage() {
         <section>
           <h2>Contact</h2>
           <p>
-            Questions about this policy can be sent to privacy@thetechholler.com.
+            Questions about this policy can be sent to techhollerdan@gmail.com.
           </p>
         </section>
       </div>
