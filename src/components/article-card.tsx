@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { getCategory } from "@/data/site";
+import { siteUrl } from "@/lib/env";
 import { formatDate } from "@/lib/format";
 import type { Article } from "@/types/content";
 import { ArticleArt } from "@/components/article-art";
+import { ShareMenu } from "@/components/share";
 
 export function ArticleCard({
   article,
@@ -13,6 +15,7 @@ export function ArticleCard({
   variant?: "standard" | "compact" | "feature";
 }) {
   const category = getCategory(article.category);
+  const shareUrl = `${siteUrl}/article/${article.slug}`;
 
   return (
     <article className={`article-card ${variant}`}>
@@ -40,9 +43,12 @@ export function ArticleCard({
           <Link href={`/article/${article.slug}`}>{article.title}</Link>
         </h2>
         {variant !== "compact" && <p>{article.dek}</p>}
-        <Link href={`/article/${article.slug}`} className="read-link">
-          Read the story <ArrowUpRight size={15} aria-hidden="true" />
-        </Link>
+        <div className="card-actions">
+          <Link href={`/article/${article.slug}`} className="read-link">
+            Read the story <ArrowUpRight size={15} aria-hidden="true" />
+          </Link>
+          <ShareMenu url={shareUrl} title={article.title} summary={article.dek} />
+        </div>
       </div>
     </article>
   );

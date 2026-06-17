@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Clock, ExternalLink, RefreshCw, ShieldCheck } from "lucide-react";
 import { ArticleArt } from "@/components/article-art";
-import { ShareBar } from "@/components/share-bar";
+import { ShareBar } from "@/components/share";
 import { getCategory, SITE_NAME } from "@/data/site";
 import { getArticleBySlug } from "@/lib/content";
 import { publicUrl, siteUrl } from "@/lib/env";
