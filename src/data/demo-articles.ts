@@ -32,6 +32,7 @@ export const demoArticles: Article[] = [
     isBreaking: false,
     isDemo: true,
     trendScore: 88,
+    likeCount: 0,
     heroImageAlt: "Editorial illustration of an AI control panel inside a rural workshop",
     quickTake: [
       "Agent systems are shifting from answers toward completed workflows.",
@@ -75,6 +76,7 @@ export const demoArticles: Article[] = [
     isBreaking: false,
     isDemo: true,
     trendScore: 75,
+    likeCount: 0,
     heroImageAlt: "Editorial illustration of a glowing key unlocking a digital gate",
     quickTake: [
       "Passkeys reduce phishing risk by binding sign-in to the real service.",
@@ -111,6 +113,7 @@ export const demoArticles: Article[] = [
     isBreaking: false,
     isDemo: true,
     trendScore: 72,
+    likeCount: 0,
     heroImageAlt: "Editorial illustration of a household robot carefully holding a glass",
     quickTake: [
       "Manipulation is a tougher bottleneck than navigation or conversation.",
@@ -147,6 +150,7 @@ export const demoArticles: Article[] = [
     isBreaking: false,
     isDemo: true,
     trendScore: 69,
+    likeCount: 0,
     heroImageAlt: "Editorial illustration combining a retro spaceship computer and a modern smart speaker",
     quickTake: [
       "Conversational interfaces moved from fiction into everyday products.",
@@ -183,6 +187,7 @@ export const demoArticles: Article[] = [
     isBreaking: false,
     isDemo: true,
     trendScore: 65,
+    likeCount: 0,
     heroImageAlt: "Editorial illustration of small satellites observing a storm over farmland",
     quickTake: [
       "More satellites can shorten the time between observations.",
@@ -219,6 +224,7 @@ export const demoArticles: Article[] = [
     isBreaking: false,
     isDemo: true,
     trendScore: 62,
+    likeCount: 0,
     forecastHorizon: "2030-2035",
     heroImageAlt: "Editorial illustration of wearable displays and a compact personal computer in 2035",
     quickTake: [

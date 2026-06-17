@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Clock, ExternalLink, RefreshCw, ShieldCheck } from "lucide-react";
 import { ArticleArt } from "@/components/article-art";
+import { LikeButton } from "@/components/like-button";
+import { ShareBar } from "@/components/share-bar";
 import { getCategory, SITE_NAME } from "@/data/site";
-import { getArticleBySlug } from "@/lib/content";
+import { getArticleBySlug, hasViewerLiked } from "@/lib/content";
 import { publicUrl, siteUrl } from "@/lib/env";
+import { engagementConfigured, TH_VID_COOKIE, visitorHash } from "@/lib/reader-engagement";
 import { formatDateTime } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +45,18 @@ export default async function ArticlePage({
 }) {
   const article = await getArticleBySlug((await params).slug);
   if (!article) notFound();
+
+  const shareUrl = `${siteUrl}/article/${article.slug}`;
+
+  // Cheap per-device like state: only run the lookup when a th_vid cookie is
+  // present and the engagement salt is configured.
+  let initiallyLiked = false;
+  if (engagementConfigured && !article.isDemo) {
+    const vid = (await cookies()).get(TH_VID_COOKIE)?.value;
+    if (vid) {
+      initiallyLiked = await hasViewerLiked(article.id, visitorHash(vid));
+    }
+  }
 
   const category = getCategory(article.category);
   const isTalkAroundTown = article.editorialMode === "talk-around-town";
@@ -96,6 +112,14 @@ export default async function ArticlePage({
               Published {formatDateTime(article.publishedAt)} · {article.readingMinutes} min read
             </span>
           </div>
+        </div>
+        <div className="article-engagement">
+          <ShareBar url={shareUrl} title={article.title} />
+          <LikeButton
+            slug={article.slug}
+            initialCount={article.likeCount}
+            initiallyLiked={initiallyLiked}
+          />
         </div>
       </header>
 

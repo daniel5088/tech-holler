@@ -79,6 +79,7 @@ export async function queueCuratedDraft(
     revisionNote: draft.editorialMode === "talk-around-town"
       ? `Talk Around Town: ${draft.uncertaintyNote}`
       : undefined,
+    likeCount: 0,
   };
 
   await persistEditorialDraft(article, {
