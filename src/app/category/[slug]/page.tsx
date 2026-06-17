@@ -14,7 +14,20 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const category = getCategory((await params).slug);
   return category
-    ? { title: category.name, description: category.description }
+    ? {
+        title: category.name,
+        description: category.description,
+        alternates: {
+          types: {
+            "application/rss+xml": [
+              {
+                url: `/category/${category.slug}/rss.xml`,
+                title: `${category.name} RSS`,
+              },
+            ],
+          },
+        },
+      }
     : { title: "Category not found" };
 }
 
