@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getArticles } from "@/lib/content";
-import { editorialModelName, env } from "@/lib/env";
+import { editorialModelName, env, siteUrl } from "@/lib/env";
+import { postToBluesky } from "@/lib/social/bluesky";
 import { findDuplicate, hasSuspiciousPhraseReuse } from "@/lib/pipeline/deduplication";
 import {
   moderateDraft,
@@ -322,11 +323,21 @@ export async function generateEditorialDraft(
 
     await persistArticle(article);
 
+    // Best-effort social distribution: postToBluesky never throws and no-ops
+    // when credentials are absent, so it can't affect publication.
+    const social = await postToBluesky({
+      title: article.title,
+      dek: article.dek,
+      url: `${siteUrl}/article/${article.slug}`,
+      imageUrl: `${siteUrl}/article/${article.slug}/opengraph-image`,
+    });
+
     return finish(
       "completed",
       {
         article: { id: article.id, slug: article.slug, title: article.title },
         candidate: { key: candidate.key, label: candidate.label },
+        social,
         adapterErrors: errors,
       },
       "published",
