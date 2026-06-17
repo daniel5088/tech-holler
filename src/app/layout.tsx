@@ -7,6 +7,7 @@ import { siteUrl } from "@/lib/env";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID = "G-ZB0GSC9MYY";
+const ADSENSE_CLIENT_ID = "ca-pub-6134956060374776";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -40,6 +41,11 @@ export default function RootLayout({
       </body>
       {process.env.NODE_ENV === "production" && (
         <>
+          <Script
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT_ID}`}
+            strategy="afterInteractive"
+            crossOrigin="anonymous"
+          />
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
             strategy="afterInteractive"
