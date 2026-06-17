@@ -4,7 +4,6 @@ const optionalUrl = z.string().url().optional().or(z.literal(""));
 
 const envSchema = z.object({
   NEXT_PUBLIC_SITE_URL: optionalUrl,
-  NEXT_PUBLIC_BASE_PATH: z.string().optional(),
   NEXT_PUBLIC_SUPABASE_URL: optionalUrl,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
@@ -33,7 +32,6 @@ const envSchema = z.object({
 
 export const env = envSchema.parse({
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
-  NEXT_PUBLIC_BASE_PATH: process.env.NEXT_PUBLIC_BASE_PATH,
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -61,9 +59,6 @@ export const env = envSchema.parse({
 });
 
 export const siteUrl = env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-export const basePath = env.NEXT_PUBLIC_BASE_PATH || "";
-export const publicUrl = (path: string) =>
-  path.startsWith("/") ? `${basePath}${path}` : path;
 export const siteRedirectUrl = (path: string, origin = siteUrl) => new URL(path, origin);
 export const publishingEnabled = env.PUBLISHING_ENABLED === "true";
 export const supabaseConfigured = Boolean(

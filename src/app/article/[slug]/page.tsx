@@ -6,7 +6,7 @@ import { ArticleArt } from "@/components/article-art";
 import { ShareBar } from "@/components/share";
 import { getCategory, SITE_NAME } from "@/data/site";
 import { getArticleBySlug } from "@/lib/content";
-import { publicUrl, siteUrl } from "@/lib/env";
+import { siteUrl } from "@/lib/env";
 import { formatDateTime } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -172,7 +172,7 @@ export default async function ArticlePage({
               {article.sources.map((source) => (
                 <li key={`${source.url}-${source.title}`}>
                   <a
-                    href={publicUrl(source.url)}
+                    href={source.url}
                     target={source.url.startsWith("/") ? undefined : "_blank"}
                     rel={source.url.startsWith("/") ? undefined : "noopener noreferrer"}
                   >
