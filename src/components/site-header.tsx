@@ -15,7 +15,7 @@ export function SiteHeader() {
       </div>
       <div className="masthead shell">
         <Link href="/" className="brand" aria-label={`${SITE_NAME} home`}>
-          <span className="brand-mark">TH</span>
+          <span className="brand-mark" aria-hidden="true" />
           <span>
             <strong>THE TECH HOLLER</strong>
             <small>Tomorrow&apos;s news, told loud</small>
