@@ -91,17 +91,15 @@ textarea {
 }
 
 .brand-mark {
-  width: 47px;
-  height: 47px;
-  display: grid;
-  place-items: center;
-  background: var(--rust);
-  color: white;
-  font-size: 19px;
-  font-weight: 900;
-  letter-spacing: -0.08em;
-  transform: rotate(-2deg);
-  box-shadow: 4px 4px 0 var(--ink);
+  width: 52px;
+  height: 52px;
+  flex: none;
+  background-color: #021623;
+  background-image: url("/logo-mark.png");
+  background-size: cover;
+  background-position: center;
+  border-radius: 11px;
+  box-shadow: 3px 3px 0 var(--ink);
 }
 
 .brand strong,
